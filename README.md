@@ -1,98 +1,78 @@
-# RideEase — Online Cab Booking Platform (Toury Edition)
+# RideEase ("Toury" Edition) — Online Cab Booking Platform
 
-A full-stack, enterprise-grade cab-hailing and fleet management platform powered by **100% Java (Spring Boot + Thymeleaf)**, **MongoDB Atlas**, **Cloudinary**, and **Mappls (MapmyIndia)**.
+A full-stack multi-portal online cab booking application built with **Java 17/21, Spring Boot 3.2.5, Thymeleaf, and MongoDB Atlas**.
 
 ---
 
-## 🏛️ System Architecture & 3-Port Isolation
+## 🏛️ System Architecture & Subprojects
 
-RideEase runs a multi-connector Tomcat configuration isolating each actor role on its own dedicated port:
+The repository contains three project subdirectories reflecting the planned and implemented layers:
 
+### 1. `backend/` (Fully Implemented & Active)
+- **Framework:** Spring Boot 3.2.5 (Pure Java)
+- **Frontend Architecture:** Java-rendered dynamic server-side views using **Thymeleaf, Bootstrap 5.3, Bootstrap Icons, and Leaflet.js**.
+- **Port Isolation:**
+  - **Port `8080` (Passenger Portal):** Interactive map with OSRM road routing, location autocomplete, upfront fare tiers, trip tracking, payment history, and profile settings.
+  - **Port `8081` (Driver Partner Portal):** Real-time ride requests dispatch, OTP pickup verification, route navigation, and trip completion ledger.
+  - **Port `8082` (Fleet Admin Portal):** Fleet metrics, global booking ledger, and driver KYC approvals.
+- **Data Persistence:** MongoDB Atlas with Geospatial `2dsphere` indexes.
+- **Media Storage:** Cloudinary Java SDK 2.x for driver verification and vehicle document management.
+- **Authoritative Routing:** Integrated OSRM road-routing engine (`RoadRoutingService.java`) with zero coordinate synthesis or straight-line fallbacks.
+
+### 2. `frontend/` (Scaffold / Planned Future Web Client)
+- Contains `package.json` specifications for an optional standalone React/Vite web application.
+- *Status:* Unbuilt scaffold; the active production application runs directly on the Spring Boot + Thymeleaf server (`backend/`).
+
+### 3. `android/` (Planned Mobile Client Skeleton)
+- Contains Gradle Android project scaffolding for native Android driver and rider apps.
+
+---
+
+## 🔒 Security & Environment Setup
+
+All sensitive secrets and environment configuration must be provided via environment variables. **No hardcoded credentials exist in source code.**
+
+### 1. Configure Environment Variables
+Copy `backend/.env.example` to `backend/.env` (or set system environment variables):
+
+```env
+# Server Ports
+PORT=8080
+DRIVER_PORT=8081
+ADMIN_PORT=8082
+
+# MongoDB Atlas URI (Mandatory - Application will fail to start if missing)
+SPRING_DATA_MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/rideease_db?retryWrites=true&w=majority&appName=Cluster0&tls=true
+
+# JWT Secret (Mandatory - Minimum 32 characters)
+JWT_SECRET=your_minimum_32_characters_secure_jwt_secret_here
+
+# Cloudinary Storage Configuration (Optional for KYC uploads)
+CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
+
+# Initial Administrator Bootstrap (Optional)
+ADMIN_INITIAL_EMAIL=admin@rideease.com
+ADMIN_INITIAL_PASSWORD=ChooseASecureAdminPasswordHere
 ```
-                            ┌────────────────────────────┐
-                            │     Cloudinary Media CDN   │
-                            │ (KYC Docs & Vehicle Photo) │
-                            └─────────────▲──────────────┘
-                                          │
-    ┌─────────────────────────────────────┼─────────────────────────────────────┐
-    │                                     │                                     │
-    ▼ (Port 8080)                         ▼ (Port 8081)                         ▼ (Port 8082)
-┌───────────────────────┐             ┌───────────────────────┐             ┌───────────────────────┐
-│   Passenger Portal    │             │   Driver Partner Hub  │             │   Fleet Admin Console │
-│ • Email/Password Auth │             │ • Driver Registration │             │ • Fleet Operations    │
-│ • Cab Booking & Fare  │             │ • Live Request Radar  │             │ • Live Trips Monitor  │
-│ • Mappls Route Matrix │             │ • Accept / Start OTP  │             │ • User/Driver Ledger  │
-│ • Live Road Animation │             │ • Earnings & Payouts  │             │ • Rate Matrix Controls│
-│ • My Rides & Payments │             │ • Settings & Delete   │             │ • Emergency Monitor   │
-│ • Settings & Delete   │             │                       │             │                       │
-└───────────┬───────────┘             └───────────┬───────────┘             └───────────┬───────────┘
-            │                                     │                                     │
-            └─────────────────────────┬───────────┴─────────────────────────────────────┘
-                                      │
-                                      ▼
-             ┌──────────────────────────────────────────────────┐
-             │       Spring Boot 3.x Multi-Port Core API        │
-             │   • PortAccessFilter (Role boundary enforcement) │
-             │   • MapplsRoutingService (MapmyIndia Matrix)     │
-             │   • Dynamic Fare Engine (Mini / Sedan / SUV)     │
-             │   • Trip State Machine (SEARCHING -> COMPLETED)  │
-             │   • BCrypt Password Security                     │
-             └────────────────────────┬─────────────────────────┘
-                                      │
-                                      ▼
-             ┌──────────────────────────────────────────────────┐
-             │            MongoDB Atlas Cloud Cluster            │
-             │         Database: rideease_db (Cluster0)         │
-             │   • users, drivers, vehicles, bookings, reviews  │
-             │   • 2dsphere Geospatial Indexing for Proximity   │
-             └──────────────────────────────────────────────────┘
-```
 
 ---
 
-## 🌐 Dedicated Application Ports & URLs
+## 🚦 How to Build, Test, and Run
 
-| Role | Port | Direct URL | Default Credentials / Action |
-|---|---|---|---|
-| **Passenger / Rider** | **`8080`** | [http://localhost:8080/](http://localhost:8080/) | Register a new rider or sign in to book cabs |
-| **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Register a driver partner or sign in to accept rides |
-| **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | Provisioned via `ADMIN_INITIAL_EMAIL` & `ADMIN_INITIAL_PASSWORD` |
-| **Database Diagnostics** | **`8080`** | [http://localhost:8080/api/health/db](http://localhost:8080/api/health/db) | Live Read & Write latency diagnostics on Atlas |
-| **Mappls Route API** | **`8080`** | [http://localhost:8080/api/maps/route](http://localhost:8080/api/maps/route) | Mappls (MapmyIndia) Distance & ETA Calculator |
-
----
-
-## 🗺️ Mapping & Routing Integration: Mappls (MapmyIndia)
-
-The platform is integrated with **Mappls (MapmyIndia)** for accurate Indian route distance matrices, traffic durations, and geospatial calculations:
-- Configured in [`backend/src/main/resources/application.properties`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/resources/application.properties) via `mappls.api-key`, `mappls.client-id`, and `mappls.client-secret`.
-- Handled by [`MapplsRoutingService.java`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/java/com/rideease/service/MapplsRoutingService.java) and exposed via [`/api/maps/route`](http://localhost:8080/api/maps/route).
-
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technology | Details |
-|---|---|---|
-| **Language & Framework** | Java 17/21, Spring Boot 3.2.5 | Embedded Tomcat with multi-connector configuration |
-| **UI & Templating** | Thymeleaf, HTML5, Bootstrap 5.3, CSS3 | 100% Java-rendered frontend without Node.js dependencies |
-| **Database** | MongoDB Atlas (Cluster0) | Cloud-hosted document database with TLS encryption |
-| **Media Storage** | Cloudinary Java SDK 2.0 (HTTP5) | Driver KYC documents and vehicle photo uploads |
-| **Mapping & Routing** | Mappls (MapmyIndia) Platform | Routing, distance matrix, and ETA |
-| **Security** | Spring Security 6, BCrypt | Secure password hashing, session and role isolation |
-
----
-
-## 🚦 How to Run the Application
-
+### Run Automated Tests
 ```powershell
-cd "C:\Users\ashri\Java\PROJECT-CAB BOOKING\backend"
-mvn clean spring-boot:run
+cd backend
+mvn test
+```
+
+### Start the Application
+```powershell
+cd backend
+mvn spring-boot:run
 ```
 
 Once started:
-1. Open **`http://localhost:8080/`** (User Portal)
-2. Open **`http://localhost:8081/driver/login`** (Driver Portal)
-3. Open **`http://localhost:8082/admin/login`** (Admin Portal: Sign in with provisioned administrator credentials)
-4. Inspect database latency at **`http://localhost:8080/api/health/db`**
-5. Inspect Mappls routing at **`http://localhost:8080/api/maps/route`**
+1. **Passenger Portal:** [http://localhost:8080/](http://localhost:8080/)
+2. **Driver Portal:** [http://localhost:8081/driver/login](http://localhost:8081/driver/login)
+3. **Admin Portal:** [http://localhost:8082/admin/login](http://localhost:8082/admin/login)
+4. **Database Health Diagnostic:** [http://localhost:8080/api/health/db](http://localhost:8080/api/health/db)
