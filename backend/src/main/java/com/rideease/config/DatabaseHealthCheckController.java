@@ -5,6 +5,8 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @RestController
 public class DatabaseHealthCheckController {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseHealthCheckController.class);
 
     @Value("${spring.data.mongodb.uri}")
     private String mongoUri;
@@ -32,7 +36,7 @@ public class DatabaseHealthCheckController {
             // 1. TEST WRITE
             long writeStart = System.currentTimeMillis();
             Document testDoc = new Document("_id", testId)
-                    .append("description", "MongoDB Atlas Live Read/Write Health Check")
+                    .append("description", "MongoDB Health Check")
                     .append("timestamp", Instant.now().toString())
                     .append("status", "ACTIVE");
             collection.insertOne(testDoc);
@@ -48,22 +52,18 @@ public class DatabaseHealthCheckController {
 
             if (retrievedDoc != null) {
                 response.put("status", "UP");
-                response.put("database", "MongoDB Atlas Cluster0");
-                response.put("databaseName", "rideease_db");
-                response.put("writeTest", "SUCCESS (" + writeLatency + " ms)");
-                response.put("readTest", "SUCCESS (" + readLatency + " ms)");
-                response.put("insertedDocumentId", testId);
-                response.put("retrievedDocument", retrievedDoc.toJson());
-                response.put("message", "Database is 100% OPERATIONAL for both READ and WRITE operations!");
+                response.put("writeLatencyMs", writeLatency);
+                response.put("readLatencyMs", readLatency);
+                response.put("message", "Database read/write check passed");
             } else {
                 response.put("status", "ERROR");
                 response.put("message", "Document was written but could not be read back.");
             }
 
         } catch (Exception e) {
+            log.error("Database health check failed", e);
             response.put("status", "DOWN");
-            response.put("error", e.getClass().getSimpleName());
-            response.put("errorMessage", e.getMessage());
+            response.put("message", "Database connection check failed");
         }
 
         return response;

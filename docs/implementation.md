@@ -97,7 +97,7 @@ The React development server runs on `http://localhost:5173`.
 
 ### 3.3. Database Indexing
 ```bash
-mongosh "mongodb+srv://yeswanthpillimitla_db_user:GpLoKeBhznWnGRsS@cluster0.5nggeea.mongodb.net/rideease_db" database/init-mongo.js
+mongosh "$SPRING_DATA_MONGODB_URI" database/init-mongo.js
 ```
 
 ---

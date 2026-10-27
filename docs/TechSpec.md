@@ -71,8 +71,8 @@ MAPPLS_CLIENT_ID=
 MAPPLS_CLIENT_SECRET=
 
 # Cloudinary
-CLOUDINARY_URL=cloudinary://795713391115231:mCCJIMWYknyBu47nNFKQYsvy7kI@sy4opzcj
+CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
 
 # MongoDB Atlas
-MONGODB_URI=mongodb+srv://yeswanthpillimitla_db_user:GpLoKeBhznWnGRsS@cluster0.5nggeea.mongodb.net/rideease_db?retryWrites=true&w=majority&appName=Cluster0
+SPRING_DATA_MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/rideease_db?retryWrites=true&w=majority&appName=Cluster0
 ```

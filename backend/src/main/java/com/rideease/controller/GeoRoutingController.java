@@ -22,7 +22,7 @@ public class GeoRoutingController {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${mappls.api-key:nofirpxgqwhpegaxdnvwcotwrbptisymmmnw}")
+    @Value("${mappls.api-key:}")
     private String mapplsApiKey;
 
     /**

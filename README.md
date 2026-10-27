@@ -56,7 +56,7 @@ RideEase runs a multi-connector Tomcat configuration isolating each actor role o
 |---|---|---|---|
 | **Passenger / Rider** | **`8080`** | [http://localhost:8080/](http://localhost:8080/) | Register a new rider or sign in to book cabs |
 | **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Register a driver partner or sign in to accept rides |
-| **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | **Email:** `admin@rideease.com` <br> **Password:** `admin123` |
+| **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | Provisioned via `ADMIN_INITIAL_EMAIL` & `ADMIN_INITIAL_PASSWORD` |
 | **Database Diagnostics** | **`8080`** | [http://localhost:8080/api/health/db](http://localhost:8080/api/health/db) | Live Read & Write latency diagnostics on Atlas |
 | **Mappls Route API** | **`8080`** | [http://localhost:8080/api/maps/route](http://localhost:8080/api/maps/route) | Mappls (MapmyIndia) Distance & ETA Calculator |
 
@@ -93,6 +93,6 @@ mvn clean spring-boot:run
 Once started:
 1. Open **`http://localhost:8080/`** (User Portal)
 2. Open **`http://localhost:8081/driver/login`** (Driver Portal)
-3. Open **`http://localhost:8082/admin/login`** (Admin Portal: `admin@rideease.com` / `admin123`)
+3. Open **`http://localhost:8082/admin/login`** (Admin Portal: Sign in with provisioned administrator credentials)
 4. Inspect database latency at **`http://localhost:8080/api/health/db`**
 5. Inspect Mappls routing at **`http://localhost:8080/api/maps/route`**
