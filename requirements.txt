@@ -1,0 +1,26 @@
+# ==============================================================================
+# RideEase Cab Booking Platform — System & Environment Requirements
+# ==============================================================================
+#
+# Primary Technology Stack: Pure Java (Spring Boot 3.2.5 + Maven + Thymeleaf)
+# Database: MongoDB Atlas / MongoDB 7.0
+# Media Storage: Cloudinary Java SDK 2.x
+#
+# If utilizing optional Python automation utilities, database seeding scripts,
+# or test drivers, the following packages are recommended:
+# ==============================================================================
+
+# MongoDB Python Client (for administrative maintenance & index migration)
+pymongo>=4.6.0
+
+# HTTP Client (for external API routing verification & test requests)
+requests>=2.31.0
+
+# Environment Variable Management
+python-dotenv>=1.0.0
+
+# WebSocket client (for STOMP / SockJS telemetry integration testing)
+websocket-client>=1.7.0
+
+# Cryptography / Security Utilities
+cryptography>=42.0.0
