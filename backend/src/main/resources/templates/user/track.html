@@ -148,8 +148,12 @@
 
     <!-- Leaflet Script for Live Route Tracking -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- SockJS and STOMP for Real-time Telemetry -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <script th:inline="javascript">
         /*<![CDATA[*/
+        const bookingId = /*[[${booking.id}]]*/ '';
         const bookingStatus = /*[[${booking.status.name()}]]*/ 'SEARCHING';
         
         // MongoDB stores coordinates as [longitude, latitude]
@@ -157,10 +161,6 @@
         const pLat = /*[[${booking.pickupLocation.coordinates[1]}]]*/ 16.4445;
         const dLon = /*[[${booking.dropoffLocation.coordinates[0]}]]*/ 80.6200;
         const dLat = /*[[${booking.dropoffLocation.coordinates[1]}]]*/ 16.5175;
-
-        // Simulated Driver position near pickup
-        const driverLat = pLat - 0.008;
-        const driverLon = pLon - 0.006;
 
         let map = L.map('live-trip-map').setView([pLat, pLon], 12);
 
@@ -193,50 +193,47 @@
         L.marker([pLat, pLon], {icon: pickupIcon}).addTo(map).bindPopup("<b>Pickup:</b> " + /*[[${booking.pickupAddress}]]*/ 'Pickup');
         L.marker([dLat, dLon], {icon: dropIcon}).addTo(map).bindPopup("<b>Dropoff:</b> " + /*[[${booking.dropoffAddress}]]*/ 'Dropoff');
 
-        // Fetch actual OSRM road geometry
+        let dynamicCarMarker = null;
+
+        // Fetch authoritative OSRM road geometry
         fetch(`/api/geo/route?pLat=${pLat}&pLon=${pLon}&dLat=${dLat}&dLon=${dLon}`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'SUCCESS' && data.geometry) {
-                    if (bookingStatus === 'ACCEPTED') {
-                        // Driver en route to pickup: fetch road route from driver position to pickup
-                        fetch(`/api/geo/route?pLat=${driverLat}&pLon=${driverLon}&dLat=${pLat}&dLon=${pLon}`)
-                            .then(r => r.json())
-                            .then(dData => {
-                                L.marker([driverLat, driverLon], {icon: carIcon}).addTo(map).bindPopup("<b>Captain</b> is approaching pickup").openPopup();
-                                if (dData.geometry) {
-                                    const driverRoute = L.geoJSON(dData.geometry, {
-                                        style: { color: '#f59e0b', weight: 6, opacity: 0.9 }
-                                    }).addTo(map);
-                                    map.fitBounds(driverRoute.getBounds(), { padding: [50, 50] });
-                                }
-                            });
+                    const fullRoute = L.geoJSON(data.geometry, {
+                        style: { color: '#4f46e5', weight: 6, opacity: 0.9 }
+                    }).addTo(map);
+                    map.fitBounds(fullRoute.getBounds(), { padding: [50, 50] });
 
-                    } else if (bookingStatus === 'IN_PROGRESS') {
-                        // Trip in progress: render the actual road geometry
-                        const fullRoute = L.geoJSON(data.geometry, {
-                            style: { color: '#4f46e5', weight: 6, opacity: 0.9 }
-                        }).addTo(map);
-
-                        // Car marker positioned along the road
-                        if (data.geometry.coordinates && data.geometry.coordinates.length > 0) {
-                            const midCoord = data.geometry.coordinates[Math.floor(data.geometry.coordinates.length / 2)];
-                            L.marker([midCoord[1], midCoord[0]], {icon: carIcon}).addTo(map).bindPopup("<b>Cab in Transit</b>").openPopup();
-                        }
-                        map.fitBounds(fullRoute.getBounds(), { padding: [50, 50] });
-
-                    } else {
-                        // SEARCHING: Render full road route geometry
-                        const fullRoute = L.geoJSON(data.geometry, {
-                            style: { color: '#6366f1', weight: 5, opacity: 0.8 }
-                        }).addTo(map);
-                        map.fitBounds(fullRoute.getBounds(), { padding: [50, 50] });
-                    }
+                    // Initial car placement
+                    dynamicCarMarker = L.marker([pLat, pLon], {icon: carIcon}).addTo(map).bindPopup("<b>Captain</b>");
                 }
             })
             .catch(e => {
                 console.error("OSRM Road routing error:", e);
             });
+
+        // Connect WebSocket STOMP for live driver tracking
+        try {
+            const socket = new SockJS('/ws-ride');
+            const stompClient = Stomp.over(socket);
+            stompClient.debug = null; // Quiet in console
+
+            stompClient.connect({}, function () {
+                stompClient.subscribe('/topic/ride/' + bookingId + '/telemetry', function (message) {
+                    const telemetry = JSON.parse(message.body);
+                    if (telemetry.lat && telemetry.lon) {
+                        if (dynamicCarMarker) {
+                            dynamicCarMarker.setLatLng([telemetry.lat, telemetry.lon]);
+                        } else {
+                            dynamicCarMarker = L.marker([telemetry.lat, telemetry.lon], {icon: carIcon}).addTo(map);
+                        }
+                    }
+                });
+            });
+        } catch (wsErr) {
+            console.warn("WebSocket telemetry offline:", wsErr);
+        }
         /*]]>*/
     </script>
 

@@ -39,6 +39,8 @@ public class Booking {
 
     private PaymentStatus paymentStatus;
     private PaymentMethod paymentMethod;
+    private String paymentTransactionId;
+    private Instant paidAt;
 
     @CreatedDate
     private Instant createdAt;
@@ -98,6 +100,12 @@ public class Booking {
 
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public String getPaymentTransactionId() { return paymentTransactionId; }
+    public void setPaymentTransactionId(String paymentTransactionId) { this.paymentTransactionId = paymentTransactionId; }
+
+    public Instant getPaidAt() { return paidAt; }
+    public void setPaidAt(Instant paidAt) { this.paidAt = paidAt; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

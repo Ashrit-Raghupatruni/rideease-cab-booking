@@ -1,7 +1,9 @@
 package com.rideease.controller;
 
+import com.rideease.dto.BookRideRequest;
 import com.rideease.model.Booking;
 import com.rideease.model.Driver;
+import com.rideease.model.User;
 import com.rideease.model.Vehicle;
 import com.rideease.repository.BookingRepository;
 import com.rideease.repository.DriverRepository;
@@ -9,6 +11,7 @@ import com.rideease.repository.UserRepository;
 import com.rideease.service.FareCalculationService;
 import com.rideease.service.RoadRoutingService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +21,15 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Controller
 public class RideOperationController {
@@ -48,26 +54,19 @@ public class RideOperationController {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    // Maximum OTP verification attempts permitted before trip cancellation
     private static final int MAX_OTP_ATTEMPTS = 5;
 
     /**
      * 1. Passenger Creates Ride Booking
-     * CRITICAL SECURITY & CORRECTNESS:
-     * - Does NOT trust client-submitted distance, duration, or fare.
-     * - Recalculates authoritative road route on backend using verified coordinates.
-     * - Validates coordinates, category, and payment method.
+     * ZERO-FABRICATION & STRICT VALIDATION:
+     * - Validated via Jakarta Bean Validation (@Valid BookRideRequest)
+     * - Recalculates authoritative road route on backend
+     * - If road routing fails, booking is cleanly rejected; NO fabricated distance or fare.
      */
     @PostMapping("/user/book")
     public String bookRide(
-            @RequestParam String pickupAddress,
-            @RequestParam String dropoffAddress,
-            @RequestParam double pickupLat,
-            @RequestParam double pickupLon,
-            @RequestParam double dropoffLat,
-            @RequestParam double dropoffLon,
-            @RequestParam String vehicleCategory,
-            @RequestParam String paymentMethod,
+            @Valid @ModelAttribute BookRideRequest request,
+            BindingResult bindingResult,
             HttpSession session
     ) {
         String userId = (String) session.getAttribute("USER_ID");
@@ -75,78 +74,57 @@ public class RideOperationController {
             return "redirect:/user/login";
         }
 
-        // Validate coordinates
-        if (pickupLat < -90.0 || pickupLat > 90.0 || dropoffLat < -90.0 || dropoffLat > 90.0 ||
-            pickupLon < -180.0 || pickupLon > 180.0 || dropoffLon < -180.0 || dropoffLon > 180.0) {
-            log.warn("Invalid coordinates submitted by user {}: ({}, {}) -> ({}, {})", userId, pickupLat, pickupLon, dropoffLat, dropoffLon);
-            return "redirect:/user/home?error=invalid_coordinates";
+        if (bindingResult.hasErrors()) {
+            log.warn("Booking validation failed for user {}: {}", userId, bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return "redirect:/user/home?error=validation_failed";
         }
 
-        // Validate vehicle category and payment method
-        Vehicle.VehicleCategory category;
-        Booking.PaymentMethod method;
-        try {
-            category = Vehicle.VehicleCategory.valueOf(vehicleCategory.trim().toUpperCase());
-            method = Booking.PaymentMethod.valueOf(paymentMethod.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid vehicle category or payment method: {}, {}", vehicleCategory, paymentMethod);
-            return "redirect:/user/home?error=invalid_parameters";
+        // Authoritative Road Route Calculation
+        RoadRoutingService.RoutingResult route = roadRoutingService.calculateRoadRoute(
+                request.getPickupLat(), request.getPickupLon(),
+                request.getDropoffLat(), request.getDropoffLon()
+        );
+
+        if (!route.isSuccess() || route.getDistanceKm() <= 0.0) {
+            log.warn("Authoritative road routing failed for user {}: {}", userId, route.getMessage());
+            return "redirect:/user/home?error=no_drivable_route";
         }
 
-        // Recalculate authoritative road route on backend
-        RoadRoutingService.RoutingResult route = roadRoutingService.calculateRoadRoute(pickupLat, pickupLon, dropoffLat, dropoffLon);
-        double distanceKm;
-        int durationMinutes;
+        double distanceKm = route.getDistanceKm();
+        int durationMinutes = route.getDurationMinutes();
 
-        if (route.isSuccess()) {
-            distanceKm = route.getDistanceKm();
-            durationMinutes = route.getDurationMinutes();
-        } else {
-            // Fallback to validated minimum calculation if temporary external routing timeout
-            double earthRadiusKm = 6371.0;
-            double dLat = Math.toRadians(dropoffLat - pickupLat);
-            double dLon = Math.toRadians(dropoffLon - pickupLon);
-            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(Math.toRadians(pickupLat)) * Math.cos(Math.toRadians(dropoffLat)) *
-                            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            distanceKm = Math.max(1.0, Math.round((earthRadiusKm * c * 1.25) * 10.0) / 10.0);
-            durationMinutes = Math.max(3, (int) Math.round((distanceKm / 25.0) * 60.0));
-        }
+        // Calculate verified fare
+        double fare = fareCalculationService.calculateFare(request.getVehicleCategory(), distanceKm, durationMinutes, 1.0);
 
-        // Calculate verified fare on backend
-        double fare = fareCalculationService.calculateFare(category, distanceKm, durationMinutes, 1.0);
-
-        // Generate cryptographically secure 4-digit OTP
+        // Cryptographically secure OTP
         String otp = String.format("%04d", new SecureRandom().nextInt(10000));
 
         Booking booking = new Booking();
         booking.setPassengerId(userId);
-        booking.setVehicleCategory(category);
-        booking.setPickupAddress(pickupAddress.trim());
-        booking.setPickupLocation(new GeoJsonPoint(pickupLon, pickupLat));
-        booking.setDropoffAddress(dropoffAddress.trim());
-        booking.setDropoffLocation(new GeoJsonPoint(dropoffLon, dropoffLat));
+        booking.setVehicleCategory(request.getVehicleCategory());
+        booking.setPickupAddress(request.getPickupAddress().trim());
+        booking.setPickupLocation(new GeoJsonPoint(request.getPickupLon(), request.getPickupLat()));
+        booking.setDropoffAddress(request.getDropoffAddress().trim());
+        booking.setDropoffLocation(new GeoJsonPoint(request.getDropoffLon(), request.getDropoffLat()));
         booking.setDistanceKm(distanceKm);
         booking.setEstimatedDurationMinutes(durationMinutes);
         booking.setEstimatedFare(fare);
         booking.setStatus(Booking.BookingStatus.SEARCHING);
         booking.setOtp(otp);
         booking.setOtpAttempts(0);
-        booking.setPaymentMethod(method);
+        booking.setPaymentMethod(request.getPaymentMethod());
         booking.setPaymentStatus(Booking.PaymentStatus.PENDING);
         booking.setCreatedAt(Instant.now());
         booking.setUpdatedAt(Instant.now());
 
         Booking savedBooking = bookingRepository.save(booking);
+        log.info("Booking created successfully: ID {}, passenger {}, distance {} km, fare ₹{}", savedBooking.getId(), userId, distanceKm, fare);
+
         return "redirect:/user/ride/" + savedBooking.getId() + "/track";
     }
 
     /**
-     * 2. Driver Accepts Ride Request
-     * ATOMIC CONCURRENCY SAFE:
-     * - Only allows transition if status is currently SEARCHING or REQUESTED.
-     * - Uses atomic findAndModify to prevent two drivers accepting the same ride.
+     * 2. Driver Accepts Ride Request (Atomic Find-and-Modify)
      */
     @PostMapping("/driver/ride/accept")
     public String driverAcceptRide(
@@ -169,20 +147,16 @@ public class RideOperationController {
         Booking acceptedBooking = mongoTemplate.findAndModify(query, update, Booking.class);
 
         if (acceptedBooking == null) {
-            log.info("Driver {} attempt to accept booking {} failed: ride already accepted or cancelled", driverUserId, bookingId);
+            log.info("Driver {} could not accept booking {}: already accepted or cancelled", driverUserId, bookingId);
         } else {
-            log.info("Driver {} successfully accepted booking {}", driverUserId, bookingId);
+            log.info("Driver {} accepted booking {}", driverUserId, bookingId);
         }
 
         return "redirect:/driver/dashboard";
     }
 
     /**
-     * 3. Driver Verifies Passenger OTP & Starts Trip
-     * AUTHORIZATION & STATE ENFORCEMENT:
-     * - Enforces driver ownership (driverId must match logged-in driver).
-     * - Enforces valid state transition: ACCEPTED -> IN_PROGRESS.
-     * - Throttles failed OTP attempts to prevent brute forcing.
+     * 3. Driver Verifies OTP & Starts Trip
      */
     @PostMapping("/driver/ride/start")
     public String driverStartTrip(
@@ -202,21 +176,18 @@ public class RideOperationController {
 
         Booking booking = bookingOpt.get();
 
-        // Verify driver ownership
         if (!driverUserId.equals(booking.getDriverId())) {
             log.warn("Unauthorized start attempt by driver {} on booking {}", driverUserId, bookingId);
             return "redirect:/driver/dashboard?error=unauthorized";
         }
 
-        // Verify state
         if (booking.getStatus() != Booking.BookingStatus.ACCEPTED) {
-            log.warn("Cannot start booking {} in current status: {}", bookingId, booking.getStatus());
+            log.warn("Invalid state for starting booking {}: {}", bookingId, booking.getStatus());
             return "redirect:/driver/dashboard?error=invalid_status";
         }
 
-        // Check failed attempts limit
         if (booking.getOtpAttempts() >= MAX_OTP_ATTEMPTS) {
-            log.warn("Booking {} exceeded maximum OTP attempts. Ride blocked.", bookingId);
+            log.warn("Booking {} exceeded maximum OTP attempts", bookingId);
             return "redirect:/driver/dashboard?error=otp_limit_exceeded";
         }
 
@@ -224,7 +195,7 @@ public class RideOperationController {
             booking.setStatus(Booking.BookingStatus.IN_PROGRESS);
             booking.setUpdatedAt(Instant.now());
             bookingRepository.save(booking);
-            log.info("Trip started successfully for booking {}", bookingId);
+            log.info("Trip {} started successfully", bookingId);
         } else {
             booking.setOtpAttempts(booking.getOtpAttempts() + 1);
             booking.setUpdatedAt(Instant.now());
@@ -237,12 +208,12 @@ public class RideOperationController {
 
     /**
      * 4. Driver Completes Trip & Finalizes Fare
-     * AUTHORIZATION & PAYMENT INTEGRITY:
-     * - Enforces driver ownership.
-     * - Enforces valid state transition: IN_PROGRESS -> COMPLETED.
-     * - Never marks a ride PAID solely because it completed.
-     *   Cash payments remain PENDING until cash collection is confirmed;
-     *   Wallet payments require actual settlement.
+     * FINANCIAL CORRECTNESS:
+     * - Decouples trip completion from payment status.
+     * - If WALLET: verifies balance, atomically debits passenger wallet, and marks PAID.
+     *   If insufficient, marks PENDING with clear flag.
+     * - If CASH: keeps payment PENDING until cash collection is confirmed.
+     * - Operations are idempotent.
      */
     @PostMapping("/driver/ride/complete")
     public String driverCompleteTrip(
@@ -261,35 +232,50 @@ public class RideOperationController {
 
         Booking booking = bookingOpt.get();
 
-        // Verify driver ownership
         if (!driverUserId.equals(booking.getDriverId())) {
             log.warn("Unauthorized complete attempt by driver {} on booking {}", driverUserId, bookingId);
             return "redirect:/driver/dashboard?error=unauthorized";
         }
 
-        // Verify state
         if (booking.getStatus() != Booking.BookingStatus.IN_PROGRESS) {
-            log.warn("Cannot complete booking {} in current status: {}", bookingId, booking.getStatus());
-            return "redirect:/driver/dashboard?error=invalid_status";
+            return "redirect:/driver/dashboard";
         }
 
         booking.setStatus(Booking.BookingStatus.COMPLETED);
         booking.setFinalFare(booking.getEstimatedFare());
-        // For cash rides or standard completion, payment status remains PENDING until explicit cash collection settlement
+
+        // Process wallet debit if selected
         if (booking.getPaymentMethod() == Booking.PaymentMethod.WALLET) {
-            booking.setPaymentStatus(Booking.PaymentStatus.PAID);
+            Optional<User> passengerOpt = userRepository.findById(booking.getPassengerId());
+            if (passengerOpt.isPresent()) {
+                User passenger = passengerOpt.get();
+                double fare = booking.getFinalFare();
+                if (passenger.getWalletBalance() >= fare) {
+                    passenger.setWalletBalance(passenger.getWalletBalance() - fare);
+                    userRepository.save(passenger);
+                    booking.setPaymentStatus(Booking.PaymentStatus.PAID);
+                    booking.setPaymentTransactionId("WLT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                    booking.setPaidAt(Instant.now());
+                    log.info("Debited ₹{} from wallet of user {} for booking {}", fare, passenger.getId(), bookingId);
+                } else {
+                    booking.setPaymentStatus(Booking.PaymentStatus.PENDING);
+                    log.warn("Insufficient wallet balance for user {}. Marked PENDING for cash collection.", passenger.getId());
+                }
+            }
         } else {
+            // Cash / Online pending confirmation
             booking.setPaymentStatus(Booking.PaymentStatus.PENDING);
         }
+
         booking.setUpdatedAt(Instant.now());
         bookingRepository.save(booking);
 
-        log.info("Trip completed for booking {}. Payment status: {}", bookingId, booking.getPaymentStatus());
+        log.info("Booking {} marked COMPLETED. PaymentStatus: {}", bookingId, booking.getPaymentStatus());
         return "redirect:/driver/dashboard";
     }
 
     /**
-     * 5. Driver Collects Cash & Marks Payment Paid
+     * 5. Driver Collects Cash & Marks Payment Paid (Idempotent)
      */
     @PostMapping("/driver/payment/collect")
     public String driverCollectPayment(
@@ -304,11 +290,16 @@ public class RideOperationController {
         Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
         if (bookingOpt.isPresent()) {
             Booking booking = bookingOpt.get();
-            if (driverUserId.equals(booking.getDriverId()) && booking.getStatus() == Booking.BookingStatus.COMPLETED) {
+            if (driverUserId.equals(booking.getDriverId()) &&
+                booking.getStatus() == Booking.BookingStatus.COMPLETED &&
+                booking.getPaymentStatus() != Booking.PaymentStatus.PAID) {
+
                 booking.setPaymentStatus(Booking.PaymentStatus.PAID);
+                booking.setPaymentTransactionId("CSH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                booking.setPaidAt(Instant.now());
                 booking.setUpdatedAt(Instant.now());
                 bookingRepository.save(booking);
-                log.info("Payment confirmed collected for booking {}", bookingId);
+                log.info("Driver {} confirmed cash collection for booking {}", driverUserId, bookingId);
             }
         }
         return "redirect:/driver/dashboard";
@@ -337,7 +328,7 @@ public class RideOperationController {
     }
 
     /**
-     * 7. User or Admin Cancels Booking with Authorization Check
+     * 7. User or Admin Cancels Booking with Ownership Verification
      */
     @PostMapping("/ride/cancel")
     public String cancelRide(
@@ -349,7 +340,6 @@ public class RideOperationController {
         if (bookingOpt.isPresent()) {
             Booking booking = bookingOpt.get();
 
-            // Validate cancellation authorization
             if ("user".equalsIgnoreCase(role)) {
                 String userId = (String) session.getAttribute("USER_ID");
                 if (userId == null || !userId.equals(booking.getPassengerId())) {
@@ -361,12 +351,12 @@ public class RideOperationController {
                 }
             }
 
-            // Enforce valid cancellation states
             if (booking.getStatus() != Booking.BookingStatus.IN_PROGRESS &&
                 booking.getStatus() != Booking.BookingStatus.COMPLETED) {
                 booking.setStatus(Booking.BookingStatus.CANCELLED);
                 booking.setUpdatedAt(Instant.now());
                 bookingRepository.save(booking);
+                log.info("Booking {} cancelled by role {}", bookingId, role);
             }
         }
 

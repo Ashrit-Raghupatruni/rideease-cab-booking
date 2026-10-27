@@ -29,6 +29,7 @@ public class User {
     private String profilePhotoUrl;
 
     private boolean active = true;
+    private double walletBalance = 1500.00;
 
     @CreatedDate
     private Instant createdAt;
@@ -75,6 +76,9 @@ public class User {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public double getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(double walletBalance) { this.walletBalance = walletBalance; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
