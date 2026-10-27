@@ -2,7 +2,8 @@ package com.rideease.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
+import com.rideease.service.RoadRoutingService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -22,8 +23,8 @@ public class GeoRoutingController {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${mappls.api-key:}")
-    private String mapplsApiKey;
+    @Autowired
+    private RoadRoutingService roadRoutingService;
 
     /**
      * Address Autocomplete Suggestions
@@ -71,10 +72,7 @@ public class GeoRoutingController {
                     results.add(item);
                 }
             }
-        } catch (Exception e) {
-            // Fallback mock items if internet request has temporary DNS latency
-            System.err.println("Autocomplete notice: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
 
         return results;
     }
@@ -118,62 +116,26 @@ public class GeoRoutingController {
         return result;
     }
 
+    /**
+     * Snaps a point to nearest drivable road and verifies accessibility.
+     */
     @GetMapping("/api/geo/nearest")
     public Map<String, Object> checkNearestRoad(@RequestParam("lat") double lat, @RequestParam("lon") double lon) {
+        RoadRoutingService.SnappingResult snap = roadRoutingService.checkNearestRoad(lat, lon);
         Map<String, Object> result = new HashMap<>();
-        String[] mirrors = new String[]{
-                "https://router.project-osrm.org",
-                "https://routing.openstreetmap.de/routed-car"
-        };
-
-        for (String baseUrl : mirrors) {
-            try {
-                String nearestUrl = String.format(Locale.US,
-                        "%s/nearest/v1/driving/%.6f,%.6f", baseUrl, lon, lat);
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("User-Agent", "RideEase-CabBooking/1.0");
-                HttpEntity<String> entity = new HttpEntity<>(headers);
-
-                ResponseEntity<String> response = restTemplate.exchange(nearestUrl, HttpMethod.GET, entity, String.class);
-                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                    JsonNode root = objectMapper.readTree(response.getBody());
-                    if ("Ok".equalsIgnoreCase(root.path("code").asText(""))) {
-                        JsonNode wp = root.path("waypoints").get(0);
-                        double distance = wp.path("distance").asDouble();
-                        JsonNode loc = wp.path("location");
-                        double snapLon = loc.get(0).asDouble();
-                        double snapLat = loc.get(1).asDouble();
-                        String roadName = wp.path("name").asText("Accessible Road");
-
-                        result.put("status", "SUCCESS");
-                        result.put("code", "Ok");
-                        result.put("distanceMeters", distance);
-                        result.put("snappedLat", snapLat);
-                        result.put("snappedLon", snapLon);
-                        result.put("roadName", roadName);
-                        // If within 300 meters, considered directly routable
-                        result.put("isRoutable", distance < 300.0);
-                        return result;
-                    }
-                }
-            } catch (Exception e) {
-                // Try next mirror
-            }
-        }
-
-        result.put("status", "UNVERIFIED");
-        result.put("code", "ConnectionFailure");
-        result.put("message", "Could not query nearest road network");
-        result.put("isRoutable", true);
+        result.put("status", snap.isVerified() ? "SUCCESS" : "FAILED");
+        result.put("code", snap.getCode());
+        result.put("distanceMeters", snap.getDistanceMeters());
+        result.put("snappedLat", snap.getSnappedLat());
+        result.put("snappedLon", snap.getSnappedLon());
+        result.put("roadName", snap.getRoadName());
+        result.put("isRoutable", snap.isRoutable());
+        result.put("message", snap.getMessage());
         return result;
     }
 
     /**
-     * Resilient Road Routing Engine
-     * 1. Direct OSRM router with secondary routing mirror failover
-     * 2. Inspects and returns exact status (Ok, NoRoute, NoSegment, InvalidQuery, NetworkFailure)
-     * 3. Zero mock data: Returns authentic distance, duration, and GeoJSON geometry
+     * Authoritative Road Routing Endpoint
      */
     @GetMapping("/api/geo/route")
     public Map<String, Object> calculateRoadRoute(
@@ -182,64 +144,22 @@ public class GeoRoutingController {
             @RequestParam("dLat") double dLat,
             @RequestParam("dLon") double dLon
     ) {
+        RoadRoutingService.RoutingResult routing = roadRoutingService.calculateRoadRoute(pLat, pLon, dLat, dLon);
         Map<String, Object> result = new HashMap<>();
 
-        String[] mirrors = new String[]{
-                "https://router.project-osrm.org",
-                "https://routing.openstreetmap.de/routed-car"
-        };
-
-        String lastError = "Could not reach routing servers";
-        String lastCode = "NetworkFailure";
-
-        for (String baseUrl : mirrors) {
-            try {
-                String osrmUrl = String.format(Locale.US,
-                        "%s/route/v1/driving/%.6f,%.6f;%.6f,%.6f?overview=full&geometries=geojson",
-                        baseUrl, pLon, pLat, dLon, dLat);
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("User-Agent", "RideEase-CabBooking/1.0");
-                HttpEntity<String> entity = new HttpEntity<>(headers);
-
-                ResponseEntity<String> response = restTemplate.exchange(osrmUrl, HttpMethod.GET, entity, String.class);
-                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                    JsonNode root = objectMapper.readTree(response.getBody());
-                    String code = root.path("code").asText("");
-
-                    if ("Ok".equalsIgnoreCase(code)) {
-                        JsonNode bestRoute = root.path("routes").get(0);
-                        double distMeters = bestRoute.path("distance").asDouble();
-                        double durSeconds = bestRoute.path("duration").asDouble();
-                        JsonNode geometryNode = bestRoute.path("geometry");
-
-                        double distKm = Math.round((distMeters / 1000.0) * 10.0) / 10.0;
-                        if (distKm < 0.1) distKm = 0.1;
-                        int durMins = (int) Math.round(durSeconds / 60.0);
-                        if (durMins < 1) durMins = 1;
-
-                        result.put("status", "SUCCESS");
-                        result.put("code", "Ok");
-                        result.put("distanceKm", distKm);
-                        result.put("durationMinutes", durMins);
-                        result.put("geometry", objectMapper.convertValue(geometryNode, Map.class));
-                        result.put("routingProvider", "OSRM Road Router (" + baseUrl + ")");
-                        return result;
-                    } else {
-                        lastCode = code;
-                        lastError = root.path("message").asText("No valid drivable road route found between selected points.");
-                    }
-                }
-            } catch (Exception e) {
-                lastError = e.getMessage();
-                System.err.println("Routing mirror (" + baseUrl + ") error: " + e.getMessage());
-            }
+        if (routing.isSuccess()) {
+            result.put("status", "SUCCESS");
+            result.put("code", "Ok");
+            result.put("distanceKm", routing.getDistanceKm());
+            result.put("durationMinutes", routing.getDurationMinutes());
+            result.put("geometry", routing.getGeometry());
+            result.put("routingProvider", routing.getProvider());
+        } else {
+            result.put("status", "FAILED");
+            result.put("code", routing.getCode());
+            result.put("message", routing.getMessage());
         }
 
-        // Return authentic failure details (No synthetic / fake routes!)
-        result.put("status", "FAILED");
-        result.put("code", lastCode);
-        result.put("message", lastError);
         return result;
     }
 }

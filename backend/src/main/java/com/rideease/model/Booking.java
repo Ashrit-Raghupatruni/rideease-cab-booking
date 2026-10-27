@@ -35,6 +35,7 @@ public class Booking {
     private BookingStatus status = BookingStatus.REQUESTED;
 
     private String otp; // Verification OTP for ride start
+    private int otpAttempts = 0; // Track failed verification attempts
 
     private PaymentStatus paymentStatus;
     private PaymentMethod paymentMethod;
@@ -88,6 +89,9 @@ public class Booking {
 
     public String getOtp() { return otp; }
     public void setOtp(String otp) { this.otp = otp; }
+
+    public int getOtpAttempts() { return otpAttempts; }
+    public void setOtpAttempts(int otpAttempts) { this.otpAttempts = otpAttempts; }
 
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
