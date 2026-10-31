@@ -102,8 +102,13 @@
                 
                 <!-- STATE 1: SEARCHING DRIVER -->
                 <div th:if="${booking.status.name() == 'SEARCHING'}" class="text-center py-2">
-                    <div class="spinner-border text-primary mb-2" style="width: 2.8rem; height: 2.8rem;" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                    <div class="radar-ripple-container">
+                        <div class="radar-ripple-circle"></div>
+                        <div class="radar-ripple-circle"></div>
+                        <div class="radar-ripple-circle"></div>
+                        <div class="radar-center-icon">
+                            <i class="bi bi-radar"></i>
+                        </div>
                     </div>
                     <h2 class="h5 fw-bold text-dark mb-1">Searching for Nearby Captain...</h2>
                     <p class="text-muted small mb-2">Connecting to verified drivers active on Port 8081.</p>
@@ -119,7 +124,7 @@
                 </div>
 
                 <!-- STATE 2 & 3: DRIVER ASSIGNED OR IN TRANSIT -->
-                <div th:if="${booking.status.name() == 'ACCEPTED' or booking.status.name() == 'IN_PROGRESS'}">
+                <div th:if="${booking.status.name() == 'ACCEPTED' or booking.status.name() == 'IN_PROGRESS'}" class="driver-success-reveal">
                     
                     <!-- Dynamic ETA & Status Banner -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -186,10 +191,23 @@
                 </div>
 
                 <!-- STATE 4: COMPLETED -->
-                <div th:if="${booking.status.name() == 'COMPLETED'}" class="text-center py-3">
+                <div th:if="${booking.status.name() == 'COMPLETED'}" class="text-center py-3 completion-celebration">
                     <i class="bi bi-check-circle-fill text-success fs-1 mb-2 d-block"></i>
                     <h2 class="h5 fw-bold text-dark mb-1">Trip Successfully Completed!</h2>
-                    <p class="text-muted small mb-3">Thank you for riding with RideEase Toury Edition.</p>
+                    <p class="text-muted small mb-2">Thank you for riding with RideEase Toury Edition.</p>
+                    
+                    <!-- Interactive Rating Panel -->
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="small fw-semibold text-secondary mb-2">Rate your Captain</div>
+                        <div class="d-flex justify-content-center gap-2 fs-4 text-warning cursor-pointer">
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                            <i class="bi bi-star-fill"></i>
+                        </div>
+                    </div>
+
                     <div class="h4 fw-bold text-primary mb-3" th:text="'₹' + ${booking.fare}">₹463.00</div>
                     <a th:href="@{/user/home}" class="btn btn-toury w-100 py-2">Book Another Ride</a>
                 </div>
@@ -201,6 +219,7 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script th:src="@{/js/rideease-motion.js}"></script>
     <!-- SockJS and STOMP for Real-time Telemetry -->
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
@@ -277,7 +296,11 @@
                     const telemetry = JSON.parse(message.body);
                     if (telemetry.lat && telemetry.lon) {
                         if (dynamicCarMarker) {
-                            dynamicCarMarker.setLatLng([telemetry.lat, telemetry.lon]);
+                            if (window.animateMarkerTo) {
+                                window.animateMarkerTo(dynamicCarMarker, telemetry.lat, telemetry.lon, 900);
+                            } else {
+                                dynamicCarMarker.setLatLng([telemetry.lat, telemetry.lon]);
+                            }
                         } else {
                             dynamicCarMarker = L.marker([telemetry.lat, telemetry.lon], {icon: carIcon}).addTo(map);
                         }

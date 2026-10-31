@@ -1,4 +1,4 @@
-/* RideEase / Toury Master Styling */
+/* RideEase / Toury Master Styling & Animation System */
 :root {
     --primary-purple: #6366f1;
     --primary-indigo: #4f46e5;
@@ -8,6 +8,15 @@
     --driver-green: #10b981;
     --accent-amber: #f59e0b;
     --danger-red: #ef4444;
+
+    /* Motion Tokens (Emil Kowalski / Apple-grade Curves) */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    --duration-fast: 160ms;
+    --duration-normal: 260ms;
+    --duration-sheet: 400ms;
 }
 
 body {
@@ -16,6 +25,7 @@ body {
     color: #1e293b;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
 }
 
 .bg-gradient-toury {
@@ -35,50 +45,62 @@ body {
     border-radius: 16px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .toury-card:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+/* 1. BUTTON PRESS FEEDBACK & LOADING SYSTEM */
 .btn-toury {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     color: #ffffff;
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 12px 24px;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out), filter 120ms ease;
+    will-change: transform;
 }
 
-.btn-toury:hover {
-    opacity: 0.95;
-    color: #ffffff;
-    transform: translateY(-1px);
+.btn-toury:active {
+    transform: scale(0.96);
+    filter: brightness(0.92);
 }
 
 .btn-driver {
     background: linear-gradient(135deg, #059669 0%, #10b981 100%);
     color: #ffffff;
     border: none;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 12px 24px;
     font-weight: 600;
     cursor: pointer;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+    will-change: transform;
 }
 
-.btn-driver:hover {
-    opacity: 0.95;
-    color: #ffffff;
+.btn-driver:active {
+    transform: scale(0.96);
 }
 
-/* Map-First App Layout */
+button:active, .btn:active {
+    transform: scale(0.97);
+}
+
+/* 2. MAP-FIRST CANVAS & ENTRANCE TRANSITION */
 .map-first-container {
     position: relative;
     width: 100vw;
@@ -86,35 +108,45 @@ body {
     overflow: hidden;
 }
 
-#map-fullscreen {
-    position: absolute;
-    top: 0;
-    left: 0;
+#map-fullscreen, #live-trip-map, #driver-map, #admin-fleet-map {
     width: 100%;
     height: 100%;
     z-index: 1;
+    animation: mapEntranceFade 0.6s var(--ease-out) forwards;
 }
 
-/* Floating Bottom Sheet on Desktop & Mobile */
-.floating-bottom-sheet {
+@keyframes mapEntranceFade {
+    0% {
+        opacity: 0;
+        filter: blur(4px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+/* 3. SPRING-LIKE BOTTOM SHEET SLIDE-UP */
+.floating-bottom-sheet, .tracking-sheet, .driver-hud-sheet {
     position: absolute;
     bottom: 24px;
     left: 24px;
-    width: 440px;
+    width: 450px;
     max-width: calc(100vw - 48px);
     max-height: calc(100vh - 100px);
     background: #ffffff;
     border-radius: 24px;
-    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.25), 0 0 1px 1px rgba(0,0,0,0.06);
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.22), 0 0 1px 1px rgba(0,0,0,0.06);
     z-index: 1000;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.3s ease;
+    animation: sheetSpringUp var(--duration-sheet) var(--ease-drawer) forwards;
+    will-change: transform, opacity;
 }
 
 @media (max-width: 768px) {
-    .floating-bottom-sheet {
+    .floating-bottom-sheet, .tracking-sheet, .driver-hud-sheet {
         left: 0;
         bottom: 0;
         width: 100vw;
@@ -125,6 +157,17 @@ body {
     }
 }
 
+@keyframes sheetSpringUp {
+    0% {
+        opacity: 0;
+        transform: translateY(60px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 .sheet-handle-bar {
     width: 44px;
     height: 5px;
@@ -132,6 +175,12 @@ body {
     border-radius: 10px;
     margin: 10px auto 4px auto;
     cursor: grab;
+    transition: background 0.15s ease;
+}
+
+.sheet-handle-bar:active {
+    background: #94a3b8;
+    cursor: grabbing;
 }
 
 .sheet-content {
@@ -139,7 +188,7 @@ body {
     overflow-y: auto;
 }
 
-/* Floating Map Controls */
+/* 4. FLOATING MAP CONTROLS */
 .floating-map-controls {
     position: absolute;
     right: 20px;
@@ -163,20 +212,20 @@ body {
     color: #1e293b;
     font-size: 1.25rem;
     cursor: pointer;
-    transition: transform 0.15s, background-color 0.15s;
+    transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast);
+    will-change: transform;
 }
 
 .map-control-btn:hover {
     background: #f8fafc;
-    transform: scale(1.05);
+    transform: scale(1.06);
 }
 
-.map-control-btn.active {
-    background: #4f46e5;
-    color: #ffffff;
+.map-control-btn:active {
+    transform: scale(0.94);
 }
 
-/* Saved Places Badges */
+/* 5. SAVED PLACES CHIPS */
 .saved-place-chip {
     display: inline-flex;
     align-items: center;
@@ -189,91 +238,208 @@ body {
     color: #334155;
     border: 1px solid #e2e8f0;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--duration-fast) var(--ease-out);
+    white-space: nowrap;
 }
 
 .saved-place-chip:hover {
     background: #e2e8f0;
     color: #0f172a;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
 }
 
-/* Premium Vehicle Cards */
+.saved-place-chip:active {
+    transform: translateY(0);
+}
+
+/* 6. VEHICLE SELECTION ANIMATIONS */
 .vehicle-card-premium {
     border: 2px solid #e2e8f0;
     border-radius: 18px;
     padding: 16px;
     background: #ffffff;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
+    transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background-color 180ms ease;
+    will-change: transform, border-color, box-shadow;
 }
 
 .vehicle-card-premium:hover {
     border-color: #a5b4fc;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.1);
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.12);
+}
+
+.vehicle-card-premium:active {
+    transform: scale(0.98);
 }
 
 .vehicle-card-premium.selected {
     border-color: #4f46e5;
     background: linear-gradient(to right, #f5f3ff, #ffffff);
-    box-shadow: 0 12px 25px -5px rgba(79, 70, 229, 0.2);
+    box-shadow: 0 12px 25px -5px rgba(79, 70, 229, 0.22);
+    transform: translateY(-2px);
 }
 
-/* Pulse animation for Live GPS */
-@keyframes pulseGps {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.6); }
-    70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(79, 70, 229, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
-}
-
-.gps-pulse-marker {
-    width: 16px;
-    height: 16px;
-    background: #4f46e5;
-    border: 3px solid #ffffff;
-    border-radius: 50%;
-    animation: pulseGps 2s infinite;
-}
-
-/* Road Simulation & Animated Moving Car */
-.road-simulation {
+/* 7. RADAR / SEARCHING RIPPLE EFFECT */
+.radar-ripple-container {
     position: relative;
-    width: 100%;
-    height: 180px;
-    background: #334155;
-    border-radius: 16px;
-    overflow: hidden;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 16px auto;
     display: flex;
     align-items: center;
-    box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+    justify-content: center;
 }
 
-.road-lane-divider {
+.radar-ripple-circle {
     position: absolute;
-    width: 200%;
-    height: 6px;
-    top: calc(50% - 3px);
-    background: repeating-linear-gradient(90deg, #f8fafc 0, #f8fafc 40px, transparent 40px, transparent 80px);
-    animation: roadMove 1.5s linear infinite;
+    border: 2px solid #6366f1;
+    border-radius: 50%;
+    animation: rippleExpand 2.2s cubic-bezier(0.1, 0.6, 0.2, 1) infinite;
 }
 
-@keyframes roadMove {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-80px); }
+.radar-ripple-circle:nth-child(2) {
+    animation-delay: 0.7s;
 }
 
-.animated-car {
-    position: absolute;
-    left: 45%;
-    width: 85px;
-    height: auto;
-    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.5));
-    animation: carBounce 0.6s ease-in-out infinite alternate;
+.radar-ripple-circle:nth-child(3) {
+    animation-delay: 1.4s;
 }
 
-@keyframes carBounce {
-    0% { transform: translateY(-2px); }
-    100% { transform: translateY(2px); }
+@keyframes rippleExpand {
+    0% {
+        width: 24px;
+        height: 24px;
+        opacity: 1;
+    }
+    100% {
+        width: 100px;
+        height: 100px;
+        opacity: 0;
+    }
+}
+
+.radar-center-icon {
+    position: relative;
+    z-index: 2;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+}
+
+/* 8. DRIVER ASSIGNED & PROFILE SUCCESS REVEAL */
+.driver-success-reveal {
+    animation: driverReveal 0.45s var(--ease-spring) forwards;
+}
+
+@keyframes driverReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.93) translateY(12px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* 9. RIDE COMPLETED CELEBRATION MODAL / PANEL */
+.completion-celebration {
+    animation: completionPop 0.5s var(--ease-spring) forwards;
+}
+
+@keyframes completionPop {
+    0% {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    60% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 10. SMOOTH DRIVER MARKER TRANSITIONS (Leaflet) */
+.smooth-driver-marker {
+    transition: transform 0.6s linear, top 0.6s linear, left 0.6s linear;
+}
+
+/* 11. ANIMATED ROUTE STROKE (DASHED FLOW) */
+.animated-route-path {
+    stroke-dasharray: 8, 12;
+    animation: dashTravel 1.2s linear infinite;
+}
+
+@keyframes dashTravel {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+/* 12. NOTIFICATION SLIDE-IN TOAST SYSTEM */
+.rideease-toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.rideease-toast {
+    pointer-events: auto;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 12px 18px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15), 0 0 1px 1px rgba(0,0,0,0.06);
+    border-left: 4px solid var(--primary-indigo);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #1e293b;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 300ms var(--ease-drawer), opacity 250ms ease;
+}
+
+.rideease-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.rideease-toast.hide {
+    transform: translateX(120%);
+    opacity: 0;
+}
+
+/* Reduced Motion Compatibility */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .radar-ripple-circle {
+        display: none !important;
+    }
+    .floating-bottom-sheet, .tracking-sheet, .driver-hud-sheet {
+        animation: none !important;
+    }
 }

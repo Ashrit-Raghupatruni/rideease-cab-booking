@@ -207,6 +207,7 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script th:src="@{/js/rideease-motion.js}"></script>
 
     <script>
         let map;
@@ -451,15 +452,24 @@
                         const dist = data.distanceKm;
                         const dur = data.durationMinutes;
 
-                        roadGeoJsonLayer = L.geoJSON(data.geometry, {
-                            style: {
+                        if (window.animateRoutePolyline && data.geometry.coordinates) {
+                            roadGeoJsonLayer = window.animateRoutePolyline(map, data.geometry.coordinates, {
                                 color: '#4f46e5',
                                 weight: 6,
                                 opacity: 0.9,
-                                lineJoin: 'round',
-                                lineCap: 'round'
-                            }
-                        }).addTo(map);
+                                pulse: true
+                            });
+                        } else {
+                            roadGeoJsonLayer = L.geoJSON(data.geometry, {
+                                style: {
+                                    color: '#4f46e5',
+                                    weight: 6,
+                                    opacity: 0.9,
+                                    lineJoin: 'round',
+                                    lineCap: 'round'
+                                }
+                            }).addTo(map);
+                        }
 
                         map.fitBounds(roadGeoJsonLayer.getBounds(), { padding: [80, 80] });
 
