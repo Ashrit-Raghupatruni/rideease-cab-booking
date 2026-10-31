@@ -159,7 +159,17 @@ public class WebViewController {
 
         long totalUsers = allUsers.stream().filter(u -> u.getRole() == com.rideease.model.Role.PASSENGER).count();
         long totalDrivers = allUsers.stream().filter(u -> u.getRole() == com.rideease.model.Role.DRIVER).count();
-        long activeRides = allBookings.stream().filter(b -> b.getStatus() == Booking.BookingStatus.IN_PROGRESS || b.getStatus() == Booking.BookingStatus.ACCEPTED).count();
+        
+        // Count all active rides: SEARCHING (broadcasted/pending), ACCEPTED (assigned), ARRIVING, or IN_PROGRESS
+        long activeRides = allBookings.stream().filter(b -> 
+            b.getStatus() == Booking.BookingStatus.SEARCHING ||
+            b.getStatus() == Booking.BookingStatus.ACCEPTED ||
+            b.getStatus() == Booking.BookingStatus.ARRIVING ||
+            b.getStatus() == Booking.BookingStatus.IN_PROGRESS
+        ).count();
+
+        long searchingCount = allBookings.stream().filter(b -> b.getStatus() == Booking.BookingStatus.SEARCHING).count();
+        long inTransitCount = allBookings.stream().filter(b -> b.getStatus() == Booking.BookingStatus.ACCEPTED || b.getStatus() == Booking.BookingStatus.ARRIVING || b.getStatus() == Booking.BookingStatus.IN_PROGRESS).count();
 
         double totalRevenue = allBookings.stream()
                 .filter(b -> b.getStatus() == Booking.BookingStatus.COMPLETED && b.getFinalFare() != null)
@@ -169,6 +179,8 @@ public class WebViewController {
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("totalDrivers", totalDrivers);
         model.addAttribute("activeRides", activeRides);
+        model.addAttribute("searchingCount", searchingCount);
+        model.addAttribute("inTransitCount", inTransitCount);
         model.addAttribute("totalRevenue", totalRevenue);
         model.addAttribute("allBookings", allBookings);
         model.addAttribute("allUsers", allUsers);

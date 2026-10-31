@@ -58,12 +58,15 @@
                 <div class="admin-kpi-card border-start border-4 border-primary">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-muted small fw-semibold">Active In-Transit Rides</div>
+                            <div class="text-muted small fw-semibold">Active Dispatches & Rides</div>
                             <h2 class="h3 fw-bold text-primary mb-0 mt-1" th:text="${activeRides}">0</h2>
                         </div>
                         <div class="p-3 bg-primary-subtle text-primary rounded-circle"><i class="bi bi-taxi-front fs-4"></i></div>
                     </div>
-                    <div class="small text-muted mt-2">Active dispatches on Port 8080/8081</div>
+                    <div class="small text-muted mt-2">
+                        <span th:text="${searchingCount} + ' searching'">0 searching</span> • 
+                        <span th:text="${inTransitCount} + ' in-transit'">0 in-transit</span>
+                    </div>
                 </div>
             </div>
             <div class="col-xl-3 col-md-6">
