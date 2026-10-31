@@ -1,6 +1,6 @@
 # RideEase ("Toury" Edition) — Online Cab Booking Platform
 
-A full-stack multi-portal online cab booking application built with **Java 17/21, Spring Boot 3.2.5, Thymeleaf, and MongoDB**.
+A full-stack, enterprise-grade multi-portal online cab booking application built with **Java 17/21, Spring Boot 3.2.5, Thymeleaf, WebSocket STOMP, and MongoDB Atlas**.
 
 ---
 
@@ -10,40 +10,51 @@ RideEase operates with a dedicated **3-port isolation architecture** hosted on a
 
 | Role / Portal | Port | Direct URL | Responsibilities |
 |---|---|---|---|
-| **Passenger / Rider** | **`8080`** | [http://localhost:8080/](http://localhost:8080/) | Interactive Leaflet map with OSRM road routing, autocomplete, tiered upfront pricing (Mini, Sedan, SUV), live ride tracking, OTP display, and wallet management. |
-| **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Real-time trip broadcast feed, atomic acceptance, passenger pickup OTP verification, road navigation, trip completion, and cash collection confirmation. |
-| **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | Global dispatch ledger, trip lifecycle auditing, fleet KPIs, and driver KYC verification. |
+| **Passenger / Rider** | **`8080`** | [http://localhost:8080/](http://localhost:8080/) | Fullscreen Leaflet map, draggable floating bottom sheet, OSRM road routing, instant GPS location accuracy, saved places (Home/Work/Recent), tiered vehicle selection (Mini, Sedan, SUV XL) with vector illustrations, live WebSocket tracking, 24/7 Safety Centre with emergency SOS, scheduled bookings, and downloadable tax receipts. |
+| **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Map-first partner terminal, online/offline duty switch, real-time incoming request countdown card, atomic ride acceptance, start trip OTP validation, step-by-step road navigation, live GPS broadcast, and cash settlement confirmation. |
+| **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | Command center with live fleet telemetry map, Chart.js 7-day revenue & volume analytics, driver KYC & document verification table, and live searchable Trip Operations Ledger. |
 
 ### Subproject Structure:
-- **`backend/` (Active & Production-Ready):** Pure Java Spring Boot 3.2.5 web application with server-rendered Thymeleaf dynamic templates, WebSocket STOMP telemetry, and MongoDB Atlas persistence.
-- **`android/` (Planned Mobile Client):** Contains Gradle build scaffolding and architecture specifications for planned native Android apps.
-- **`database/init-mongo.js`:** MongoDB collection schemas and geospatial `2dsphere` index definitions.
+- **`backend/`:** Complete Spring Boot 3.2.5 enterprise web application with server-rendered Thymeleaf dynamic templates, WebSocket STOMP telemetry, and MongoDB Atlas persistence.
+- **`android/`:** Architecture specifications and build configuration for future native mobile client applications.
+- **`database/init-mongo.js`:** MongoDB collection schemas, indexes, and geospatial `2dsphere` definitions.
 
 ---
 
-## 🔒 Security & Privacy Hardening
+## ✨ Features & Capabilities
 
-- **Zero Hardcoded Secrets:** All credentials, keys, and connection strings are read strictly from environment variables or a local `.env` file (which is git-ignored).
-- **Fail-Fast Validation:** [`SecurityEnvironmentValidator.java`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/java/com/rideease/config/SecurityEnvironmentValidator.java) ensures required security properties are verified before boot.
-- **Secure Admin Provisioning:** No default administrator passwords exist. Administrator bootstrapping only runs if `ADMIN_INITIAL_EMAIL` and `ADMIN_INITIAL_PASSWORD` are explicitly defined.
-- **Jakarta Bean Validation:** [`BookRideRequest.java`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/java/com/rideease/dto/BookRideRequest.java) enforces coordinate range limits (`[-90, 90]`, `[-180, 180]`), address constraints, and validated vehicle/payment enums.
-- **Structured Error Handling:** [`GlobalExceptionHandler.java`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/java/com/rideease/controller/GlobalExceptionHandler.java) returns sanitized error responses without leaking stack traces or internal exception details.
+### 1. 🗺️ Authoritative Road Routing & Live Telemetry
+- **Zero Route Fabrication:** Uses genuine OSRM (`router.project-osrm.org`) driving polylines. Trips are cleanly rejected if no drivable road route exists — no synthetic straight-line lines or approximate multipliers.
+- **Progressive Route Drawing:** Dynamic animated route stroke with dashed flow indicators.
+- **Smooth Vehicle Marker Interpolation:** Leaflet markers glide smoothly between GPS telemetry ticks rather than jumping abruptly.
 
----
+### 2. ⚡ Real-Time Event-Driven Dispatch (No Polling)
+- **Eliminated Page Refresh Polling:** Replaced legacy `<meta http-equiv="refresh">` tags with event-driven WebSocket STOMP subscriptions.
+- **Targeted Topic Channels:**
+  - `/topic/ride/{id}/status`: Instant status transitions (`SEARCHING`, `ACCEPTED`, `ARRIVING`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
+  - `/topic/ride/{id}/telemetry`: Live driver coordinates with server-side validation, arrival proximity detection (< 75m), and reconnection snapshots (`/app/ride/{id}/snapshot`).
+  - `/topic/drivers/requests`: Incoming ride broadcasts delivered instantly to driver terminals.
+  - `/topic/admin/fleet/events` & `telemetry`: Real-time fleet KPI updates.
 
-## 🗺️ Authoritative Road Routing & Verification
+### 3. 🛡️ 24/7 Safety Centre & Security
+- **One-Click SOS Emergency:** Instant panic trigger that broadcasts alerts with live coordinates to emergency contacts.
+- **Trusted Emergency Contacts:** Add and manage emergency contacts (`Parent`, `Spouse`, `Sibling`, `Friend`) saved in MongoDB.
+- **Driver Verification Shield:** Roster tracking of background checks, police clearance, vehicle registration, and driver license validity.
+- **Trip OTP Verification:** 4-digit ride verification OTP required before the driver can start transit, limited to 5 failed attempts to prevent brute-forcing.
 
-- **Zero Route Fabrication:** Powered by [`RoadRoutingService.java`](file:///C:/Users/ashri/Java/PROJECT-CAB%20BOOKING/backend/src/main/java/com/rideease/service/RoadRoutingService.java), which calculates real driving polylines via OSRM (`router.project-osrm.org` / `routing.openstreetmap.de`).
-- **No Straight Lines or Synthetic Multipliers:** Booking creation completely rejects trips where genuine road geometry cannot be found.
-- **Real-Time Driver Telemetry:** Drivers broadcast GPS telemetry over `/app/driver/telemetry`, and passengers receive live car marker updates on Leaflet via `/topic/ride/{id}/telemetry`.
-
----
-
-## 💳 Payment Correctness & Wallet Management
-
+### 4. 💳 Multi-Channel Payments & Financial Correctness
 - **Decoupled Lifecycle:** Trip completion (`IN_PROGRESS -> COMPLETED`) does not automatically mark a ride as `PAID`.
-- **In-App Wallet:** System checks passenger wallet balance. If balance is sufficient, it atomically debits the fare, logs a unique transaction ID (`WLT-...`), records `paidAt`, and marks the ride `PAID`. If balance is insufficient, status remains `PENDING`.
-- **Cash Payments:** Cash trips complete with `paymentStatus = PENDING`. The driver partner must explicitly confirm physical cash collection via `/driver/payment/collect`.
+- **UPI, Wallet & Cash:**
+  - **Instant UPI:** Integrated support for Google Pay, PhonePe, and Paytm UPI transfers.
+  - **In-App Wallet:** Automated atomic balance verification and debiting (`WLT-...` transaction reference).
+  - **Cash:** Trips remain `PENDING` until the driver explicitly confirms cash collection (`CSH-...` transaction reference).
+- **Downloadable Tax Receipts (`/user/receipt/{bookingId}`):** Instant download of formatted tax invoices featuring itemized base fare, GST breakdown (SGST 9% + CGST 9%), and transaction metadata.
+
+### 5. 🎯 Scheduled Rides & Personalization
+- **Scheduled Rides:** Choose a future date and time for pickup directly during booking.
+- **Saved Places:** Quick-select chips for Home, Work, and Recent destinations.
+- **One-Tap Rebooking:** Quickly re-order frequent trips directly from the ride history ledger.
+- **Ratings & Reviews:** 1–5 star ratings and feedback stored in MongoDB.
 
 ---
 
@@ -58,6 +69,7 @@ DRIVER_PORT=8081
 ADMIN_PORT=8082
 
 # MongoDB Connection String (Atlas or Local)
+# Supports both SPRING_DATA_MONGODB_URI and MONGODB_URI
 SPRING_DATA_MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/rideease_db?retryWrites=true&w=majority&appName=Cluster0&tls=true
 
 # JWT Secret (Minimum 32 characters)
@@ -81,10 +93,22 @@ ADMIN_INITIAL_PASSWORD=ChooseASecureAdminPasswordHere!
 cd backend
 mvn clean spring-boot:run
 ```
+Access the portals:
+- **Passenger Portal:** http://localhost:8080/
+- **Driver Portal:** http://localhost:8081/driver/login
+- **Admin Portal:** http://localhost:8082/admin/login
 
-### Option 2: Run with Docker Compose (Includes Local MongoDB 7)
+### Option 2: Run with Docker Compose (Includes MongoDB 7.0 & Multi-Port Routing)
 ```powershell
 docker-compose up -d --build
+```
+To view logs:
+```powershell
+docker-compose logs -f backend
+```
+To tear down:
+```powershell
+docker-compose down -v
 ```
 
 ---
@@ -97,10 +121,10 @@ cd backend
 mvn test
 ```
 
-### Test Coverage (13/13 Passing):
-- `RideBookingValidationTest`: Validates latitude/longitude bounds and required address fields.
-- `RoadRoutingServiceTest`: Verifies out-of-bounds rejection and road network snapping.
-- `WalletPaymentSettlementTest`: Verifies atomic wallet balance debiting and insufficient balance handling.
-- `FareCalculationServiceTest`: Verifies pricing for Mini, Sedan, SUV, and surge pricing.
-- `JwtTokenProviderTest`: Verifies token signing, claim extraction, and expiration.
-- `BookingLifecycleTest`: Verifies trip state machine and OTP attempt limits.
+### Verified Test Suite:
+1. `BookingLifecycleTest` — Atomic state transitions and multi-driver concurrency prevention.
+2. `FareCalculationServiceTest` — Distance and duration matrix calculations for Mini, Sedan, and SUV.
+3. `JwtTokenProviderTest` — Token signing, parsing, and expiration validation.
+4. `RideBookingValidationTest` — Jakarta Bean Validation on coordinates, addresses, and enums.
+5. `RoadRoutingServiceTest` — OSRM API response decoding and road geometry validation.
+6. `WalletPaymentSettlementTest` — Atomic wallet debits and transaction isolation.

@@ -2,25 +2,32 @@
 # RideEase Cab Booking Platform — System & Environment Requirements
 # ==============================================================================
 #
-# Primary Technology Stack: Pure Java (Spring Boot 3.2.5 + Maven + Thymeleaf)
-# Database: MongoDB Atlas / MongoDB 7.0
-# Media Storage: Cloudinary Java SDK 2.x
+# Primary Technology Stack:
+# - Java JDK: Version 17 or 21 (Eclipse Temurin / OpenJDK)
+# - Framework: Spring Boot 3.2.5 (Maven 3.9+)
+# - Database: MongoDB 7.0+ (MongoDB Atlas or Local replica set)
+# - WebSockets: Spring Messaging STOMP + SockJS
+# - Frontend: Thymeleaf, Bootstrap 5.3.3, Leaflet 1.9.4, Chart.js
+# - Real-time Maps: Open Source Routing Machine (OSRM) Road API
 #
-# If utilizing optional Python automation utilities, database seeding scripts,
-# or test drivers, the following packages are recommended:
+# Optional Python Automation & Test Drivers Requirements:
+# Install via: pip install -r requirements.txt
 # ==============================================================================
 
-# MongoDB Python Client (for administrative maintenance & index migration)
+# MongoDB Python Driver (Database seeding, health checks, geospatial index creation)
 pymongo>=4.6.0
 
-# HTTP Client (for external API routing verification & test requests)
+# HTTP Requests Client (for OSRM API routing benchmarks & REST endpoint testing)
 requests>=2.31.0
 
-# Environment Variable Management
+# Environment Management
 python-dotenv>=1.0.0
 
-# WebSocket client (for STOMP / SockJS telemetry integration testing)
+# WebSocket Client (for STOMP / SockJS real-time driver telemetry stress testing)
 websocket-client>=1.7.0
 
-# Cryptography / Security Utilities
+# Cryptography & Token Helpers
 cryptography>=42.0.0
+
+# Command Line Interface Formatting & Diagnostics
+colorama>=0.4.6

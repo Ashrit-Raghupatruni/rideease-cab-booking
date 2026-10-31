@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # Local MongoDB 7.0 Service (with health checks and initial collection indexes)
   mongodb:
     image: mongo:7.0
     container_name: rideease-mongodb
@@ -18,6 +19,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # Spring Boot 3.2.5 Multi-Port Web Backend (Ports 8080, 8081, 8082)
   backend:
     build:
       context: ./backend
@@ -29,7 +31,7 @@ services:
       - "8081:8081"
       - "8082:8082"
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/rideease_db
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:-mongodb://mongodb:27017/rideease_db}
       JWT_SECRET: ${JWT_SECRET:-A_VERY_SECURE_RIDE_EASE_DEFAULT_DEVELOPMENT_SECRET_KEY_32_CHARS!}
       JWT_EXPIRATION_MS: 86400000
       PORT: 8080
