@@ -54,6 +54,9 @@ public class RideOperationController {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private com.rideease.service.RealtimeDispatchService realtimeDispatchService;
+
     private static final int MAX_OTP_ATTEMPTS = 5;
 
     /**
@@ -120,6 +123,10 @@ public class RideOperationController {
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking created successfully: ID {}, passenger {}, distance {} km, fare ₹{}", savedBooking.getId(), userId, distanceKm, fare);
 
+        // Real-Time Event Dispatch
+        realtimeDispatchService.broadcastNewRideRequest(savedBooking);
+        realtimeDispatchService.broadcastBookingStatus(savedBooking, "Searching for nearby captains");
+
         return "redirect:/user/ride/" + savedBooking.getId() + "/track";
     }
 
@@ -150,6 +157,7 @@ public class RideOperationController {
             log.info("Driver {} could not accept booking {}: already accepted or cancelled", driverUserId, bookingId);
         } else {
             log.info("Driver {} accepted booking {}", driverUserId, bookingId);
+            realtimeDispatchService.broadcastBookingStatus(acceptedBooking, "Captain accepted! Driving to pickup location.");
         }
 
         return "redirect:/driver/dashboard";
@@ -196,6 +204,7 @@ public class RideOperationController {
             booking.setUpdatedAt(Instant.now());
             bookingRepository.save(booking);
             log.info("Trip {} started successfully", bookingId);
+            realtimeDispatchService.broadcastBookingStatus(booking, "Trip started! En route to destination.");
         } else {
             booking.setOtpAttempts(booking.getOtpAttempts() + 1);
             booking.setUpdatedAt(Instant.now());
@@ -269,6 +278,9 @@ public class RideOperationController {
 
         booking.setUpdatedAt(Instant.now());
         bookingRepository.save(booking);
+
+        realtimeDispatchService.broadcastBookingStatus(booking, "Trip completed! Total: ₹" + booking.getFinalFare());
+        realtimeDispatchService.purgeTelemetry(bookingId);
 
         log.info("Booking {} marked COMPLETED. PaymentStatus: {}", bookingId, booking.getPaymentStatus());
         return "redirect:/driver/dashboard";
@@ -356,6 +368,8 @@ public class RideOperationController {
                 booking.setStatus(Booking.BookingStatus.CANCELLED);
                 booking.setUpdatedAt(Instant.now());
                 bookingRepository.save(booking);
+                realtimeDispatchService.broadcastBookingStatus(booking, "Ride was cancelled by " + role);
+                realtimeDispatchService.purgeTelemetry(bookingId);
                 log.info("Booking {} cancelled by role {}", bookingId, role);
             }
         }
