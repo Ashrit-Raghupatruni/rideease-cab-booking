@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Auto-refresh every 6 seconds for live fleet telemetry -->
-    <meta http-equiv="refresh" content="6">
-    <title>Fleet Admin Console (Port 8082) — RideEase</title>
+    <!-- Auto-refresh polling every 10 seconds for live fleet telemetry -->
+    <meta http-equiv="refresh" content="10">
+    <title>Fleet Admin Command Center — RideEase Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Leaflet & Mappls Map -->
+    <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" th:href="@{/css/toury.css}">
+    <!-- Chart.js for Live Fleet & Revenue Trends -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         #admin-fleet-map {
             width: 100%;
@@ -18,151 +20,237 @@
             border-radius: 16px;
             z-index: 1;
         }
+        .admin-kpi-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 18px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s;
+        }
+        .admin-kpi-card:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body class="bg-light">
 
     <!-- Admin Top Nav -->
-    <nav class="navbar navbar-expand-lg bg-gradient-admin navbar-dark shadow-sm">
+    <nav class="navbar navbar-expand-lg bg-gradient-admin navbar-dark shadow-sm py-2">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/admin/dashboard}">
-                <i class="bi bi-shield-fill-check text-primary"></i> Toury Fleet Operations <span class="badge bg-danger ms-2">Port 8082</span>
+                <i class="bi bi-shield-fill-check text-primary"></i> Toury Fleet Operations Command <span class="badge bg-danger ms-2">Port 8082</span>
             </a>
             <div class="d-flex align-items-center gap-3">
-                <span class="text-white small">Logged in as Administrator</span>
-                <a th:href="@{/auth/logout(type='admin')}" class="btn btn-outline-light btn-sm">Logout</a>
+                <span class="badge bg-success-subtle text-success border small">
+                    <i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i> Live WebSocket & OSRM Engine
+                </span>
+                <span class="text-white-50 small">Admin: ops@rideease.com</span>
+                <a th:href="@{/auth/logout(type='admin')}" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</a>
             </div>
         </div>
     </nav>
 
     <div class="container-fluid px-4 my-4">
-        <!-- Fleet KPI Metrics -->
+        
+        <!-- 1. Fleet KPI Metrics Strip -->
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="toury-card p-3 border-start border-4 border-primary">
-                    <div class="text-muted small fw-semibold">Active & In-Progress Rides</div>
-                    <h2 class="display-6 fw-bold text-primary mb-0" th:text="${activeRides}">0</h2>
-                    <div class="small text-muted mt-1">Live bookings in transit</div>
+            <div class="col-xl-3 col-md-6">
+                <div class="admin-kpi-card border-start border-4 border-primary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-semibold">Active In-Transit Rides</div>
+                            <h2 class="h3 fw-bold text-primary mb-0 mt-1" th:text="${activeRides}">0</h2>
+                        </div>
+                        <div class="p-3 bg-primary-subtle text-primary rounded-circle"><i class="bi bi-taxi-front fs-4"></i></div>
+                    </div>
+                    <div class="small text-muted mt-2">Active dispatches on Port 8080/8081</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="toury-card p-3 border-start border-4 border-success">
-                    <div class="text-muted small fw-semibold">Registered Drivers</div>
-                    <h2 class="display-6 fw-bold text-success mb-0" th:text="${totalDrivers}">0</h2>
-                    <div class="small text-muted mt-1">Captains in MongoDB</div>
+            <div class="col-xl-3 col-md-6">
+                <div class="admin-kpi-card border-start border-4 border-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-semibold">Registered Driver Partners</div>
+                            <h2 class="h3 fw-bold text-success mb-0 mt-1" th:text="${totalDrivers}">0</h2>
+                        </div>
+                        <div class="p-3 bg-success-subtle text-success rounded-circle"><i class="bi bi-person-badge fs-4"></i></div>
+                    </div>
+                    <div class="small text-muted mt-2">Verified captains in MongoDB</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="toury-card p-3 border-start border-4 border-info">
-                    <div class="text-muted small fw-semibold">Registered Passengers</div>
-                    <h2 class="display-6 fw-bold text-info mb-0" th:text="${totalUsers}">0</h2>
-                    <div class="small text-muted mt-1">Rider accounts in MongoDB</div>
+            <div class="col-xl-3 col-md-6">
+                <div class="admin-kpi-card border-start border-4 border-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-semibold">Registered Riders</div>
+                            <h2 class="h3 fw-bold text-info mb-0 mt-1" th:text="${totalUsers}">0</h2>
+                        </div>
+                        <div class="p-3 bg-info-subtle text-info rounded-circle"><i class="bi bi-people-fill fs-4"></i></div>
+                    </div>
+                    <div class="small text-muted mt-2">Passenger accounts</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="toury-card p-3 border-start border-4 border-dark">
-                    <div class="text-muted small fw-semibold">Gross Volume Settled</div>
-                    <h2 class="display-6 fw-bold text-dark mb-0" th:text="'₹' + ${totalRevenue}">₹0.00</h2>
-                    <div class="small text-muted mt-1">Completed trip settlements</div>
+            <div class="col-xl-3 col-md-6">
+                <div class="admin-kpi-card border-start border-4 border-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small fw-semibold">Total Gross Settled Volume</div>
+                            <h2 class="h3 fw-bold text-dark mb-0 mt-1" th:text="'₹' + ${totalRevenue}">₹0.00</h2>
+                        </div>
+                        <div class="p-3 bg-dark-subtle text-dark rounded-circle"><i class="bi bi-wallet2 fs-4"></i></div>
+                    </div>
+                    <div class="small text-muted mt-2">Completed ride revenues</div>
                 </div>
             </div>
         </div>
 
-        <!-- ROW: GLOBAL DISPATCH MAP & BOOKINGS MONITOR -->
+        <!-- 2. Global Fleet Map & Visual Analytics Charts -->
         <div class="row g-4 mb-4">
-            <!-- Global Fleet Map -->
+            
+            <!-- Global Fleet Telemetry Map -->
             <div class="col-lg-7">
                 <div class="toury-card p-3 h-100 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-2 px-2">
                         <h2 class="h6 fw-bold mb-0">
-                            <i class="bi bi-geo-alt-fill text-danger me-1"></i> Live City Fleet Telemetry & Dispatches
+                            <i class="bi bi-geo-alt-fill text-danger me-1"></i> Live Regional Fleet Operations Map
                         </h2>
-                        <span class="badge bg-success-subtle text-success">Mappls GeoEngine Active</span>
+                        <span class="badge bg-success-subtle text-success">OSRM Engine Synchronized</span>
                     </div>
 
-                    <!-- Admin Fleet Map Container -->
                     <div id="admin-fleet-map"></div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-3 px-2 py-2 bg-light rounded-3 small">
-                        <span><span class="badge bg-success me-1">P</span> Pickup Points</span>
-                        <span><span class="badge bg-danger me-1">D</span> Destination Dropoffs</span>
-                        <span>🚕 Active Captains En Route</span>
+                    <div class="d-flex justify-content-around text-center small text-muted pt-2 border-top mt-2">
+                        <span><span class="badge bg-success rounded-circle me-1">●</span> Available Drivers (4)</span>
+                        <span><span class="badge bg-primary rounded-circle me-1">●</span> In-Transit (2)</span>
+                        <span><span class="badge bg-warning text-dark rounded-circle me-1">●</span> Pending Dispatch</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Fare Engine & Quick Controls -->
+            <!-- Booking Volume & Revenue Chart -->
             <div class="col-lg-5">
-                <div class="toury-card p-4 h-100">
-                    <h3 class="h5 fw-bold mb-3">Live Platform Fare Matrix</h3>
-                    <p class="text-muted small">Standard rates active across all ports:</p>
-                    <ul class="list-group list-group-flush small mb-4">
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>Toury Mini (Hatchback)</span>
-                            <strong>Base ₹30.00 + ₹10.00/km</strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>Toury Sedan (Prime)</span>
-                            <strong>Base ₹50.00 + ₹14.00/km</strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>Toury SUV (6-Seater)</span>
-                            <strong>Base ₹80.00 + ₹18.00/km</strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span>Time Rate (All Tiers)</span>
-                            <strong>₹2.00 / minute</strong>
-                        </li>
-                    </ul>
+                <div class="toury-card p-3 h-100 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                        <h2 class="h6 fw-bold mb-0">
+                            <i class="bi bi-graph-up-arrow text-primary me-1"></i> Booking Volume & Revenue Trend
+                        </h2>
+                        <span class="badge bg-light text-dark border">7 Days</span>
+                    </div>
 
-                    <div class="p-3 bg-light rounded-3">
-                        <div class="small fw-bold text-dark mb-1">Mappls (MapmyIndia) Integration:</div>
-                        <div class="small text-muted">Status: Active Configuration</div>
-                        <div class="small text-success mt-1"><i class="bi bi-check-circle-fill"></i> Routing & Traffic Engine Online</div>
+                    <div class="flex-grow-1 d-flex align-items-center justify-content-center p-2">
+                        <canvas id="revenueChart" style="max-height: 310px; width: 100%;"></canvas>
                     </div>
                 </div>
             </div>
+
         </div>
 
-        <!-- REAL-TIME DISPATCH MONITOR: ALL BOOKINGS IN THE SYSTEM -->
+        <!-- 3. Driver Verification & Fleet Management Strip -->
         <div class="toury-card p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h3 class="h5 fw-bold mb-0">System Bookings & Trip Lifecycle Monitor</h3>
-                    <p class="text-muted small mb-0">Real-time ledger of rides requested on Port 8080 and accepted on Port 8081</p>
+                    <h3 class="h6 fw-bold text-dark mb-0">Driver Compliance & Document Verification</h3>
+                    <p class="text-muted small mb-0">Review licensing, background checks and approve partner cabs</p>
                 </div>
-                <span class="badge bg-primary px-3 py-2" th:text="${#lists.size(allBookings)} + ' Total Bookings'">0 Total</span>
+                <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill small">Active Roster</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th>Driver Partner</th>
+                            <th>Contact Phone</th>
+                            <th>Vehicle Category</th>
+                            <th>Registration No.</th>
+                            <th>Status</th>
+                            <th>Verification</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="small">
+                        <tr>
+                            <td><strong>Ramesh Kumar</strong></td>
+                            <td>+91 98765 12345</td>
+                            <td><span class="badge bg-primary">SEDAN</span></td>
+                            <td><code>AP 16 BK 4492</code></td>
+                            <td><span class="badge bg-success">ONLINE</span></td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span></td>
+                            <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>Active</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Suresh Varma</strong></td>
+                            <td>+91 98480 22334</td>
+                            <td><span class="badge bg-secondary">MINI</span></td>
+                            <td><code>AP 09 CD 7781</code></td>
+                            <td><span class="badge bg-secondary">OFFLINE</span></td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span></td>
+                            <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>Active</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Anil Reddy</strong></td>
+                            <td>+91 91234 56789</td>
+                            <td><span class="badge bg-dark">SUV</span></td>
+                            <td><code>AP 16 XY 9021</code></td>
+                            <td><span class="badge bg-warning text-dark">IN-TRIP</span></td>
+                            <td><span class="badge bg-success-subtle text-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span></td>
+                            <td><button class="btn btn-sm btn-outline-secondary py-0 px-2" disabled>Active</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. Interactive Live System Bookings & Trip Lifecycle Monitor -->
+        <div class="toury-card p-4 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <h3 class="h6 fw-bold mb-0">Trip Operations Ledger</h3>
+                    <p class="text-muted small mb-0">Live bookings requested on Port 8080 and accepted on Port 8081</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="bookingSearchInput" class="form-control form-control-sm" placeholder="Filter by ID or Address..." onkeyup="filterBookingsTable()">
+                    <select id="statusFilterSelect" class="form-select form-select-sm" onchange="filterBookingsTable()">
+                        <option value="">All Statuses</option>
+                        <option value="SEARCHING">SEARCHING</option>
+                        <option value="ACCEPTED">ACCEPTED</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                        <option value="COMPLETED">COMPLETED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                </div>
             </div>
 
             <div th:if="${#lists.isEmpty(allBookings)}" class="text-center py-4 text-muted">
                 <i class="bi bi-inbox fs-2"></i>
-                <p class="mb-0">No bookings have been made yet. Book a ride on <strong>http://localhost:8080/</strong> to see it populate here!</p>
+                <p class="mb-0">No bookings recorded yet. Launch a passenger ride on <strong>http://localhost:8080/</strong> to view live records.</p>
             </div>
 
             <div th:unless="${#lists.isEmpty(allBookings)}" class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle mb-0" id="bookingsTable">
                     <thead class="table-light small">
                         <tr>
                             <th>Booking ID</th>
-                            <th>Category</th>
-                            <th>Pickup Address</th>
-                            <th>Dropoff Address</th>
+                            <th>Vehicle</th>
+                            <th>Pickup Location</th>
+                            <th>Destination</th>
                             <th>Fare</th>
-                            <th>OTP</th>
-                            <th>Status</th>
+                            <th>Start OTP</th>
+                            <th>Trip Status</th>
                             <th>Payment</th>
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr th:each="b : ${allBookings}">
+                    <tbody class="small">
+                        <tr th:each="b : ${allBookings}" class="booking-row">
                             <td><code class="small" th:text="${b.id}">ID</code></td>
                             <td><span class="badge bg-secondary" th:text="${b.vehicleCategory}">SEDAN</span></td>
-                            <td th:text="${b.pickupAddress}">North Campus</td>
-                            <td th:text="${b.dropoffAddress}">Station</td>
+                            <td class="col-pickup" th:text="${b.pickupAddress}">Pickup</td>
+                            <td class="col-dropoff" th:text="${b.dropoffAddress}">Dropoff</td>
                             <td><strong class="text-success" th:text="'₹' + ${b.estimatedFare}">₹213.00</strong></td>
-                            <td><span class="badge bg-warning text-dark" th:text="${b.otp}">8492</span></td>
-                            <td>
+                            <td><span class="badge bg-warning text-dark fw-bold" th:text="${b.otp}">8492</span></td>
+                            <td class="col-status">
                                 <span class="badge" 
                                       th:classappend="${b.status.name() == 'SEARCHING' ? 'bg-warning text-dark' : (b.status.name() == 'ACCEPTED' ? 'bg-info text-white' : (b.status.name() == 'IN_PROGRESS' ? 'bg-primary' : (b.status.name() == 'COMPLETED' ? 'bg-success' : 'bg-danger')))}"
                                       th:text="${b.status}">SEARCHING</span>
@@ -174,7 +262,7 @@
                                 <form th:if="${b.status.name() != 'COMPLETED' and b.status.name() != 'CANCELLED'}" th:action="@{/ride/cancel}" method="post">
                                     <input type="hidden" name="bookingId" th:value="${b.id}">
                                     <input type="hidden" name="role" value="admin">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">Cancel</button>
                                 </form>
                                 <span th:if="${b.status.name() == 'COMPLETED'}" class="text-success small fw-bold">Settled</span>
                             </td>
@@ -186,21 +274,94 @@
 
     </div>
 
-    <!-- Leaflet Script for Admin Fleet Map -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const adminMap = L.map('admin-fleet-map').setView([12.9750, 77.5900], 13);
+        // Regional Andhra Pradesh / Amaravati / Vijayawada Fleet Telemetry Center
+        const adminMap = L.map('admin-fleet-map').setView([16.4850, 80.5650], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© Mappls MapmyIndia | OpenStreetMap',
+            attribution: '© OpenStreetMap contributors | OSRM Driving Engine',
             maxZoom: 19
         }).addTo(adminMap);
 
-        // Render markers for Bangalore city fleet dispatches
-        L.marker([12.9720, 77.5801]).addTo(adminMap).bindPopup("<b>Active Pickup:</b> North Campus Gate");
-        L.marker([12.9810, 77.6050]).addTo(adminMap).bindPopup("<b>Dropoff:</b> Central Railway Station");
-        L.marker([12.9650, 77.5750]).addTo(adminMap).bindPopup("<b>Captain Ramesh Cab:</b> Driving to Pickup");
-    </script>
+        const driverIcon = L.divIcon({
+            className: 'admin-driver-icon',
+            html: '<div style="background-color:#10b981;width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);text-align:center;font-size:14px;line-height:24px;">🚕</div>',
+            iconSize: [28, 28]
+        });
 
+        const activeCabIcon = L.divIcon({
+            className: 'admin-transit-icon',
+            html: '<div style="background-color:#4f46e5;width:28px;height:28px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);text-align:center;font-size:14px;line-height:24px;">🚗</div>',
+            iconSize: [28, 28]
+        });
+
+        // Fleet Markers
+        L.marker([16.4445, 80.5085], {icon: activeCabIcon}).addTo(adminMap).bindPopup("<b>In-Transit:</b> SRM AP to Vijayawada");
+        L.marker([16.5175, 80.6200], {icon: driverIcon}).addTo(adminMap).bindPopup("<b>Available Captain:</b> Vijayawada Station");
+        L.marker([16.4988, 80.6508], {icon: driverIcon}).addTo(adminMap).bindPopup("<b>Available Captain:</b> Benz Circle");
+        L.marker([16.4385, 80.5620], {icon: driverIcon}).addTo(adminMap).bindPopup("<b>Available Captain:</b> AIIMS Mangalagiri");
+
+        // Client-side table search & status filter
+        function filterBookingsTable() {
+            const searchVal = document.getElementById('bookingSearchInput').value.toLowerCase();
+            const statusVal = document.getElementById('statusFilterSelect').value.toUpperCase();
+            const rows = document.querySelectorAll('#bookingsTable .booking-row');
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const status = row.querySelector('.col-status').innerText.trim().toUpperCase();
+                const matchesSearch = !searchVal || text.includes(searchVal);
+                const matchesStatus = !statusVal || status === statusVal;
+
+                if (matchesSearch && matchesStatus) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize Chart.js Volume & Revenue Trend
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [
+                    {
+                        label: 'Gross Revenue (₹)',
+                        data: [4200, 6800, 5400, 7900, 9200, 11400, 14200],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.35,
+                        fill: true,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Trips Completed',
+                        data: [12, 19, 15, 22, 28, 34, 42],
+                        borderColor: '#10b981',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5],
+                        tension: 0.35,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    y: { type: 'linear', position: 'left', beginAtZero: true },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, beginAtZero: true }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

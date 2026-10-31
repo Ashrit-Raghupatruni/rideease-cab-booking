@@ -3,150 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Auto-refresh polling for driver acceptance -->
+    <!-- Auto-refresh polling if searching for a driver -->
     <meta th:if="${booking.status.name() == 'SEARCHING'}" http-equiv="refresh" content="4">
-    <title>Live Ride Status — RideEase</title>
+    <title>Live Ride Tracking — RideEase Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" th:href="@{/css/toury.css}">
     <style>
+        .map-tracking-canvas {
+            position: relative;
+            width: 100vw;
+            height: calc(100vh - 58px);
+            overflow: hidden;
+        }
         #live-trip-map {
             width: 100%;
-            height: 440px;
-            border-radius: 16px;
+            height: 100%;
             z-index: 1;
+        }
+        .tracking-sheet {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            width: 440px;
+            max-width: calc(100vw - 48px);
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.25);
+            z-index: 1000;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .tracking-sheet {
+                left: 0;
+                bottom: 0;
+                width: 100vw;
+                max-width: 100vw;
+                border-radius: 24px 24px 0 0;
+            }
+        }
+        .driver-avatar-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+        }
+        .action-circle-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            text-decoration: none;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        .action-circle-btn:hover {
+            transform: scale(1.08);
         }
     </style>
 </head>
-<body class="bg-light">
+<body class="overflow-hidden">
 
     <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg bg-gradient-toury navbar-dark shadow-sm">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg bg-gradient-toury navbar-dark shadow-sm py-2" style="height: 58px;">
+        <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/user/rides}">
                 <i class="bi bi-arrow-left"></i> My Rides
             </a>
-            <span class="badge bg-light text-dark px-3 py-2 rounded-pill fw-bold" th:text="${booking.status}">
-                SEARCHING
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-light text-dark px-3 py-2 rounded-pill fw-bold" th:text="${booking.status}">
+                    SEARCHING
+                </span>
+            </div>
         </div>
     </nav>
 
-    <div class="container my-4" style="max-width: 980px;">
-        <div class="row g-4">
-            
-            <!-- Left Column: Status, Driver Info, OTP -->
-            <div class="col-lg-5">
-                <div class="toury-card p-4 h-100 d-flex flex-column justify-content-between">
-                    <div>
-                        <!-- STATE 1: WAITING FOR CAPTAIN -->
-                        <div th:if="${booking.status.name() == 'SEARCHING'}" class="text-center py-4">
-                            <div class="spinner-border text-primary mb-3" style="width: 3.5rem; height: 3.5rem;" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <h1 class="h4 fw-bold text-dark">Waiting for Captain to accept...</h1>
-                            <p class="text-muted small">Your pickup has been broadcasted to all active captains on Port 8081.</p>
-                            <div class="alert alert-warning py-2 small rounded-pill">
-                                <i class="bi bi-broadcast me-1"></i> Searching nearest cabs...
-                            </div>
-                        </div>
+    <div class="map-tracking-canvas">
+        
+        <!-- 1. Fullscreen Tracking Map -->
+        <div id="live-trip-map"></div>
 
-                        <!-- STATE 2 & 3: CAPTAIN ACCEPTED / IN_PROGRESS -->
-                        <div th:if="${booking.status.name() == 'ACCEPTED' or booking.status.name() == 'IN_PROGRESS'}">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold mb-1">
-                                        <i class="bi bi-check-circle-fill me-1"></i> Captain Assigned!
-                                    </span>
-                                    <h2 class="h5 fw-bold text-dark mb-0" th:text="${driverName}">Ramesh Kumar</h2>
-                                    <div class="small text-muted"><i class="bi bi-telephone me-1"></i> <span th:text="${driverPhone}">+91 98765 12345</span></div>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-3">
-                                        <small class="d-block text-muted">START OTP:</small>
-                                        <span class="h4 fw-bold" th:text="${booking.otp}">8492</span>
-                                    </span>
-                                </div>
-                            </div>
+        <!-- 2. Expandable Bottom Sheet: Driver Info, OTP & ETA -->
+        <div class="tracking-sheet">
+            <div class="sheet-handle-bar"></div>
 
-                            <div class="p-3 bg-light rounded-3 mb-3">
-                                <div class="small fw-semibold text-secondary mb-1">Live Transit Status:</div>
-                                <div th:if="${booking.status.name() == 'ACCEPTED'}" class="fw-bold text-primary">
-                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i> Captain is driving to your pickup location
-                                </div>
-                                <div th:if="${booking.status.name() == 'IN_PROGRESS'}" class="fw-bold text-success">
-                                    <i class="bi bi-compass-fill me-1"></i> Trip in Progress — En route to Destination
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- STATE 4: COMPLETED -->
-                        <div th:if="${booking.status.name() == 'COMPLETED'}" class="text-center py-4">
-                            <i class="bi bi-check-circle-fill text-success fs-1"></i>
-                            <h2 class="h4 fw-bold text-dark mt-2">Ride Completed!</h2>
-                            <p class="text-muted small">Paid via <span th:text="${booking.paymentMethod}">CASH</span></p>
-                            <div class="h3 fw-bold text-primary mb-3" th:text="'₹' + ${booking.finalFare}">₹463.00</div>
-                            <a th:href="@{/user/home}" class="btn btn-toury btn-sm">Book Another Ride</a>
-                        </div>
-
-                        <!-- Addresses Box -->
-                        <div class="bg-light p-3 rounded-3 mt-3">
-                            <div class="small text-secondary mb-1">
-                                <i class="bi bi-geo-alt-fill text-success me-2"></i> Pickup: 
-                                <strong class="text-dark" th:text="${booking.pickupAddress}">SRM University, AP</strong>
-                            </div>
-                            <div class="small text-secondary">
-                                <i class="bi bi-pin-map-fill text-danger me-2"></i> Dropoff: 
-                                <strong class="text-dark" th:text="${booking.dropoffAddress}">Vijayawada Railway Station</strong>
-                            </div>
-                        </div>
+            <div class="p-3 px-4">
+                
+                <!-- STATE 1: SEARCHING DRIVER -->
+                <div th:if="${booking.status.name() == 'SEARCHING'}" class="text-center py-2">
+                    <div class="spinner-border text-primary mb-2" style="width: 2.8rem; height: 2.8rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-
-                    <!-- Cancel button -->
-                    <div th:if="${booking.status.name() == 'SEARCHING' or booking.status.name() == 'ACCEPTED'}" class="mt-4 pt-3 border-top text-center">
-                        <form th:action="@{/ride/cancel}" method="post">
-                            <input type="hidden" name="bookingId" th:value="${booking.id}">
-                            <input type="hidden" name="role" value="user">
-                            <button type="submit" class="btn btn-outline-danger btn-sm px-4">Cancel Ride</button>
-                        </form>
+                    <h2 class="h5 fw-bold text-dark mb-1">Searching for Nearby Captain...</h2>
+                    <p class="text-muted small mb-2">Connecting to verified drivers active on Port 8081.</p>
+                    <div class="alert alert-warning py-2 small rounded-pill mb-3">
+                        <i class="bi bi-broadcast me-1"></i> Transmitting pickup coordinates...
                     </div>
+                    <form th:action="@{/user/cancel}" method="post">
+                        <input type="hidden" name="bookingId" th:value="${booking.id}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-4">
+                            Cancel Search
+                        </button>
+                    </form>
                 </div>
-            </div>
 
-            <!-- Right Column: Live Synchronized Road Route Map -->
-            <div class="col-lg-7">
-                <div class="toury-card p-3 h-100 d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-center mb-2 px-2">
-                        <h2 class="h6 fw-bold mb-0">
-                            <i class="bi bi-compass text-primary me-1"></i> OSRM Drivable Road Route
-                        </h2>
-                        <span class="badge bg-primary text-white" th:text="${booking.status}">ACCEPTED</span>
-                    </div>
-
-                    <!-- Interactive Map -->
-                    <div id="live-trip-map"></div>
-
-                    <!-- Distance & ETA readout -->
-                    <div class="d-flex justify-content-between align-items-center mt-3 px-2 py-2 bg-light rounded-3">
-                        <div class="small">
-                            <span class="text-muted">Road Distance:</span> <strong class="text-dark" th:text="${booking.distanceKm} + ' km'">24.5 km</strong>
+                <!-- STATE 2 & 3: DRIVER ASSIGNED OR IN TRANSIT -->
+                <div th:if="${booking.status.name() == 'ACCEPTED' or booking.status.name() == 'IN_PROGRESS'}">
+                    
+                    <!-- Dynamic ETA & Status Banner -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold small">
+                                <i class="bi bi-circle-fill text-success me-1" style="font-size: 8px;"></i>
+                                <span th:text="${booking.status.name() == 'ACCEPTED' ? 'Captain En Route to Pickup' : 'Trip In Transit'}">Captain En Route</span>
+                            </span>
+                            <div class="h4 fw-bold text-dark mt-1 mb-0" id="etaDisplay">
+                                <span th:text="${booking.durationMinutes} + ' mins'">6 mins</span> <span class="text-muted fs-6 fw-normal">ETA</span>
+                            </div>
                         </div>
-                        <div class="small">
-                            <span class="text-muted">Estimated Time:</span> <strong class="text-primary" th:text="${booking.estimatedDurationMinutes} + ' mins'">35 mins</strong>
-                        </div>
-                        <div class="small">
-                            <span class="badge bg-success-subtle text-success">OSRM Road Geometry</span>
+                        <div class="text-end">
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-3 border">
+                                <small class="d-block text-muted" style="font-size: 0.65rem;">START OTP</small>
+                                <span class="h4 fw-bold" th:text="${booking.otp}">8492</span>
+                            </span>
                         </div>
                     </div>
+
+                    <!-- Driver Profile & Vehicle Details -->
+                    <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mb-3 border">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="driver-avatar-circle">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <h3 class="h6 fw-bold text-dark mb-0" th:text="${driverName}">Ramesh Kumar</h3>
+                                <div class="small text-muted d-flex align-items-center gap-1">
+                                    <span class="badge bg-warning text-dark py-0 px-1"><i class="bi bi-star-fill text-dark me-1"></i>4.9</span>
+                                    <span>• Maruti Dzire (White)</span>
+                                </div>
+                                <div class="badge bg-secondary-subtle text-dark fw-bold mt-1">AP 16 BK 4492</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons Strip: Call, Message, Share Trip, Cancel -->
+                    <div class="d-flex justify-content-around align-items-center mb-3 pt-1">
+                        <a th:href="'tel:' + ${driverPhone}" class="action-circle-btn bg-success-subtle text-success" title="Call Captain">
+                            <i class="bi bi-telephone-fill"></i>
+                        </a>
+                        <a href="#" onclick="alert('In-app driver messaging active on STOMP topic'); return false;" class="action-circle-btn bg-primary-subtle text-primary" title="Message">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </a>
+                        <a href="#" onclick="navigator.clipboard.writeText(window.location.href); alert('Trip tracking link copied to clipboard!'); return false;" class="action-circle-btn bg-info-subtle text-info" title="Share Trip">
+                            <i class="bi bi-share-fill"></i>
+                        </a>
+                        <button type="button" class="action-circle-btn bg-danger-subtle text-danger border-0" onclick="document.getElementById('cancelRideForm').submit();" title="Cancel Ride">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+
+                    <form id="cancelRideForm" th:action="@{/user/cancel}" method="post" style="display: none;">
+                        <input type="hidden" name="bookingId" th:value="${booking.id}">
+                    </form>
+
+                    <!-- Route Details Breakdown -->
+                    <div class="small text-muted border-top pt-2">
+                        <div class="text-truncate mb-1"><i class="bi bi-record-circle-fill text-success me-1"></i> <strong class="text-dark" th:text="${booking.pickupAddress}">Pickup</strong></div>
+                        <div class="text-truncate"><i class="bi bi-square-fill text-danger me-1"></i> <strong class="text-dark" th:text="${booking.dropoffAddress}">Dropoff</strong></div>
+                    </div>
+
                 </div>
-            </div>
 
+                <!-- STATE 4: COMPLETED -->
+                <div th:if="${booking.status.name() == 'COMPLETED'}" class="text-center py-3">
+                    <i class="bi bi-check-circle-fill text-success fs-1 mb-2 d-block"></i>
+                    <h2 class="h5 fw-bold text-dark mb-1">Trip Successfully Completed!</h2>
+                    <p class="text-muted small mb-3">Thank you for riding with RideEase Toury Edition.</p>
+                    <div class="h4 fw-bold text-primary mb-3" th:text="'₹' + ${booking.fare}">₹463.00</div>
+                    <a th:href="@{/user/home}" class="btn btn-toury w-100 py-2">Book Another Ride</a>
+                </div>
+
+            </div>
         </div>
+
     </div>
 
-    <!-- Leaflet Script for Live Route Tracking -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- SockJS and STOMP for Real-time Telemetry -->
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
@@ -156,13 +209,13 @@
         const bookingId = /*[[${booking.id}]]*/ '';
         const bookingStatus = /*[[${booking.status.name()}]]*/ 'SEARCHING';
         
-        // MongoDB stores coordinates as [longitude, latitude]
         const pLon = /*[[${booking.pickupLocation.coordinates[0]}]]*/ 80.5085;
         const pLat = /*[[${booking.pickupLocation.coordinates[1]}]]*/ 16.4445;
         const dLon = /*[[${booking.dropoffLocation.coordinates[0]}]]*/ 80.6200;
         const dLat = /*[[${booking.dropoffLocation.coordinates[1]}]]*/ 16.5175;
 
-        let map = L.map('live-trip-map').setView([pLat, pLon], 12);
+        let map = L.map('live-trip-map', { zoomControl: false }).setView([pLat, pLon], 13);
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors | OSRM Driving Engine',
@@ -171,27 +224,27 @@
 
         const carIcon = L.divIcon({
             className: 'custom-car-icon',
-            html: '<div style="background-color:#4f46e5;width:32px;height:32px;border-radius:50%;border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:white;font-size:16px;">🚗</div>',
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
+            html: '<div style="background-color:#4f46e5;width:38px;height:38px;border-radius:50%;border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">🚗</div>',
+            iconSize: [38, 38],
+            iconAnchor: [19, 19]
         });
 
         const pickupIcon = L.divIcon({
             className: 'custom-p-icon',
-            html: '<div style="background-color:#10b981;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;">P</div>',
+            html: '<div style="background-color:#10b981;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;">P</div>',
             iconSize: [28, 28],
             iconAnchor: [14, 14]
         });
 
         const dropIcon = L.divIcon({
             className: 'custom-d-icon',
-            html: '<div style="background-color:#ef4444;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;">D</div>',
+            html: '<div style="background-color:#ef4444;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;">D</div>',
             iconSize: [28, 28],
             iconAnchor: [14, 14]
         });
 
         L.marker([pLat, pLon], {icon: pickupIcon}).addTo(map).bindPopup("<b>Pickup:</b> " + /*[[${booking.pickupAddress}]]*/ 'Pickup');
-        L.marker([dLat, dLon], {icon: dropIcon}).addTo(map).bindPopup("<b>Dropoff:</b> " + /*[[${booking.dropoffAddress}]]*/ 'Dropoff');
+        L.marker([dLat, dLon], {icon: dropIcon}).addTo(map).bindPopup("<b>Destination:</b> " + /*[[${booking.dropoffAddress}]]*/ 'Dropoff');
 
         let dynamicCarMarker = null;
 
@@ -201,23 +254,23 @@
             .then(data => {
                 if (data.status === 'SUCCESS' && data.geometry) {
                     const fullRoute = L.geoJSON(data.geometry, {
-                        style: { color: '#4f46e5', weight: 6, opacity: 0.9 }
+                        style: { color: '#4f46e5', weight: 6, opacity: 0.9, lineJoin: 'round', lineCap: 'round' }
                     }).addTo(map);
-                    map.fitBounds(fullRoute.getBounds(), { padding: [50, 50] });
+                    map.fitBounds(fullRoute.getBounds(), { padding: [80, 80] });
 
-                    // Initial car placement
-                    dynamicCarMarker = L.marker([pLat, pLon], {icon: carIcon}).addTo(map).bindPopup("<b>Captain</b>");
+                    // Initial driver placement
+                    dynamicCarMarker = L.marker([pLat, pLon], {icon: carIcon}).addTo(map).bindPopup("<b>Captain Assigned</b>");
                 }
             })
             .catch(e => {
                 console.error("OSRM Road routing error:", e);
             });
 
-        // Connect WebSocket STOMP for live driver tracking
+        // WebSocket STOMP for live driver telemetry
         try {
             const socket = new SockJS('/ws-ride');
             const stompClient = Stomp.over(socket);
-            stompClient.debug = null; // Quiet in console
+            stompClient.debug = null;
 
             stompClient.connect({}, function () {
                 stompClient.subscribe('/topic/ride/' + bookingId + '/telemetry', function (message) {
@@ -236,6 +289,5 @@
         }
         /*]]>*/
     </script>
-
 </body>
 </html>

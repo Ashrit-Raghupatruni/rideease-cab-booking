@@ -3,40 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Where are you going? — RideEase</title>
+    <title>Where to? — RideEase Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Leaflet Map CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" th:href="@{/css/toury.css}">
     <style>
-        #live-map {
-            width: 100%;
-            height: 540px;
-            border-radius: 16px;
-            z-index: 1;
-            cursor: crosshair;
-        }
         .autocomplete-dropdown {
             position: absolute;
-            z-index: 1000;
+            z-index: 2000;
             width: 100%;
             background: white;
             border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 14px 35px -5px rgba(0, 0, 0, 0.15);
             max-height: 220px;
             overflow-y: auto;
             display: none;
         }
         .autocomplete-item {
-            padding: 10px 14px;
+            padding: 11px 14px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
             font-size: 0.88rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .autocomplete-item:hover {
-            background-color: #f8fafc;
+            background-color: #f5f3ff;
             color: #4f46e5;
         }
         .active-pick-mode {
@@ -47,13 +43,13 @@
         }
     </style>
 </head>
-<body>
+<body class="overflow-hidden">
 
-    <!-- Header Navigation -->
-    <nav class="navbar navbar-expand-lg bg-gradient-toury navbar-dark shadow-sm">
-        <div class="container">
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg bg-gradient-toury navbar-dark shadow-sm py-2" style="height: 58px;">
+        <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/user/home}">
-                <i class="bi bi-car-front-fill text-warning"></i> Toury / RideEase
+                <i class="bi bi-car-front-fill text-warning fs-5"></i> Toury / RideEase
             </a>
             <div class="d-flex align-items-center gap-3">
                 <a th:href="@{/user/rides}" class="btn btn-sm btn-outline-light rounded-pill px-3">
@@ -72,376 +68,389 @@
         </div>
     </nav>
 
-    <!-- Main Booking Card & Map Side-by-Side -->
-    <div class="container my-4">
-        <div class="row g-4">
-            
-            <!-- Left Side: Interactive Search, Autocomplete & Choose on Map Buttons -->
-            <div class="col-lg-5">
-                <div class="toury-card p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h1 class="h5 fw-bold mb-0">Book a Ride</h1>
-                        <span class="badge bg-primary-subtle text-primary">Port 8080</span>
-                    </div>
+    <!-- Map-First Fullscreen Canvas -->
+    <div class="map-first-container">
+        
+        <!-- 1. Fullscreen Map -->
+        <div id="map-fullscreen"></div>
 
-                    <form th:action="@{/user/search}" method="get" id="rideForm" onsubmit="return validateBeforeSubmit()">
-                        
-                        <!-- Hidden Form Inputs for Exact Road Coordinates & Distances -->
-                        <input type="hidden" id="pLat" name="pickupLat" value="16.4445">
-                        <input type="hidden" id="pLon" name="pickupLon" value="80.5085">
-                        <input type="hidden" id="dLat" name="dropoffLat" value="16.5175">
-                        <input type="hidden" id="dLon" name="dropoffLon" value="80.6200">
-                        <input type="hidden" id="distKm" name="distanceKm" value="24.5">
-                        <input type="hidden" id="durMins" name="durationMinutes" value="35">
-
-                        <!-- 1. Pickup Input & Autocomplete with Choose on Map -->
-                        <div class="mb-3 position-relative">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label small fw-semibold text-secondary mb-0">
-                                    <i class="bi bi-geo-alt-fill text-success me-1"></i> Pickup Location
-                                </label>
-                                <button type="button" id="btnPickMap" class="btn btn-xs btn-outline-success py-0 px-2 rounded-pill small" onclick="toggleMapPickMode('pickup')">
-                                    <i class="bi bi-pin-map"></i> Choose on Map
-                                </button>
-                            </div>
-                            <div class="input-group">
-                                <input type="text" id="pickupInput" name="pickup" class="form-control" 
-                                       value="SRM University, AP (Neerukonda)" autocomplete="off" placeholder="Type pickup area..."
-                                       oninput="handleAutocomplete('pickup', this.value)">
-                                <button class="btn btn-outline-secondary" type="button" onclick="clearField('pickup')">&times;</button>
-                            </div>
-                            <div id="pickupResults" class="autocomplete-dropdown"></div>
-                        </div>
-
-                        <!-- 2. Dropoff Input & Autocomplete with Choose on Map -->
-                        <div class="mb-3 position-relative">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label small fw-semibold text-secondary mb-0">
-                                    <i class="bi bi-pin-map-fill text-danger me-1"></i> Destination Dropoff
-                                </label>
-                                <button type="button" id="btnDropMap" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill small" onclick="toggleMapPickMode('dropoff')">
-                                    <i class="bi bi-pin-map"></i> Choose on Map
-                                </button>
-                            </div>
-                            <div class="input-group">
-                                <input type="text" id="dropoffInput" name="dropoff" class="form-control" 
-                                       value="Vijayawada Railway Station" autocomplete="off" placeholder="Type destination..."
-                                       oninput="handleAutocomplete('dropoff', this.value)">
-                                <button class="btn btn-outline-secondary" type="button" onclick="clearField('dropoff')">&times;</button>
-                            </div>
-                            <div id="dropoffResults" class="autocomplete-dropdown"></div>
-                        </div>
-
-                        <!-- Active Mode Alert Banner -->
-                        <div id="mapModeAlert" class="alert alert-warning py-2 small d-none mb-3">
-                            <i class="bi bi-cursor-fill me-1"></i> <span id="mapModeText">Click anywhere on the map to set location.</span>
-                        </div>
-
-                        <!-- Error Banner if Route Fails -->
-                        <div id="routeErrorAlert" class="alert alert-danger py-2 small d-none mb-3">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="routeErrorText">Could not find a drivable road route. Please choose nearby accessible roads.</span>
-                        </div>
-
-                        <!-- Quick Popular Presets for Instant 1-Click Road Route Verification -->
-                        <div class="mb-3">
-                            <label class="small text-muted fw-semibold d-block mb-1">Popular Verified Road Routes:</label>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button type="button" class="btn btn-sm btn-light border rounded-pill" onclick="setTestRoute('SRM University, AP', 16.4445, 80.5085, 'Vijayawada Railway Station', 16.5175, 80.6200)">
-                                    📍 SRM AP ➔ Vijayawada Station
-                                </button>
-                                <button type="button" class="btn btn-sm btn-light border rounded-pill" onclick="setTestRoute('Mangalagiri AIIMS', 16.4385, 80.5732, 'Benz Circle, Vijayawada', 16.4975, 80.6530)">
-                                    🏥 AIIMS ➔ Benz Circle
-                                </button>
-                                <button type="button" class="btn btn-sm btn-light border rounded-pill" onclick="setTestRoute('Gannavaram Airport (VGA)', 16.5304, 80.7968, 'Prakasam Barrage', 16.5074, 80.6053)">
-                                    ✈️ Airport ➔ Prakasam Barrage
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <button type="submit" id="submitBtn" class="btn btn-toury w-100 py-3 fw-bold d-flex justify-content-center align-items-center gap-2">
-                            <i class="bi bi-search"></i> Select Cab Tier & View Upfront Fare
-                        </button>
-                    </form>
-
-                    <!-- Rider Info Box -->
-                    <div class="mt-4 p-3 bg-light rounded-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="small text-muted mb-0">Rider Profile:</div>
-                            <div class="fw-bold text-dark" th:text="${userName}">Ashrit Raghupatruni</div>
-                            <div class="small text-secondary" th:text="${userEmail}">ashrit@example.com</div>
-                        </div>
-                        <a th:href="@{/user/settings}" class="btn btn-sm btn-outline-secondary">Manage</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Side: Interactive Leaflet Map with Real OSRM Road Geometry -->
-            <div class="col-lg-7">
-                <div class="toury-card p-3 h-100 d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-center mb-2 px-2">
-                        <h2 class="h6 fw-bold mb-0">
-                            <i class="bi bi-map-fill text-primary me-1"></i> Live OSRM Road Navigation Map
-                        </h2>
-                        <span id="routeSyncBadge" class="badge bg-success-subtle text-success">
-                            <i class="bi bi-check-circle-fill me-1"></i> Road Route Synced
-                        </span>
-                    </div>
-
-                    <!-- Map Canvas -->
-                    <div id="live-map"></div>
-
-                    <!-- Live Synchronized Road Route Telemetry -->
-                    <div class="d-flex justify-content-between align-items-center mt-3 px-3 py-2 bg-light rounded-3">
-                        <div>
-                            <span class="text-muted small">Road Distance:</span> 
-                            <strong id="statDistance" class="h6 fw-bold text-dark mb-0 ms-1">Calculating...</strong>
-                        </div>
-                        <div>
-                            <span class="text-muted small">Estimated Time:</span> 
-                            <strong id="statDuration" class="h6 fw-bold text-primary mb-0 ms-1">Calculating...</strong>
-                        </div>
-                        <div>
-                            <span class="text-muted small">Est. Fare:</span> 
-                            <strong id="statFare" class="h6 fw-bold text-success mb-0 ms-1">Calculating...</strong>
-                        </div>
-                    </div>
-
-                    <div class="small text-muted text-center mt-2">
-                        <i class="bi bi-signpost-split me-1"></i> Real road geometry rendered using <strong>OSRM Route API</strong> with OpenStreetMap road data (never a straight line).
-                    </div>
-                </div>
-            </div>
-
+        <!-- 2. Floating Map Controls (Locate Me, Reset Bounds, Pick-mode indicator) -->
+        <div class="floating-map-controls">
+            <button type="button" class="map-control-btn" id="btnLocateMe" onclick="getUserLocation()" title="Current Location">
+                <i class="bi bi-crosshair"></i>
+            </button>
+            <button type="button" class="map-control-btn" id="btnFitRoute" onclick="fitRouteBounds()" title="Fit Route View">
+                <i class="bi bi-aspect-ratio"></i>
+            </button>
         </div>
+
+        <!-- Accuracy indicator banner -->
+        <div id="accuracyBadge" class="position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-1 bg-white rounded-pill shadow-sm border small fw-semibold text-secondary d-none" style="z-index: 999;">
+            <i class="bi bi-reception-4 text-success me-1"></i> GPS Connected (<span id="accMeters">high accuracy</span>)
+        </div>
+
+        <!-- 3. Floating Bottom Sheet: Booking & Route Search Panel -->
+        <div class="floating-bottom-sheet" id="bookingSheet">
+            <div class="sheet-handle-bar"></div>
+            
+            <div class="sheet-content">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 class="h6 fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-compass-fill text-primary"></i> Plan Your Journey
+                    </h2>
+                    <span id="routeBadge" class="badge bg-secondary-subtle text-secondary small">
+                        Select Locations
+                    </span>
+                </div>
+
+                <!-- Saved Places Chips (Home, Work, Recent) -->
+                <div class="d-flex gap-2 overflow-x-auto pb-2 mb-3">
+                    <div class="saved-place-chip" onclick="quickSelectPlace('home')">
+                        <i class="bi bi-house-door-fill text-primary"></i> Home
+                    </div>
+                    <div class="saved-place-chip" onclick="quickSelectPlace('work')">
+                        <i class="bi bi-briefcase-fill text-warning"></i> Work
+                    </div>
+                    <div class="saved-place-chip" onclick="quickSelectPlace('recent1')">
+                        <i class="bi bi-clock-history text-secondary"></i> AIIMS Mangalagiri
+                    </div>
+                    <div class="saved-place-chip" onclick="quickSelectPlace('recent2')">
+                        <i class="bi bi-pin-map-fill text-danger"></i> Benz Circle
+                    </div>
+                </div>
+
+                <!-- Booking Form -->
+                <form th:action="@{/user/search}" method="get" id="rideForm" onsubmit="return validateBeforeSubmit()">
+                    
+                    <!-- Hidden Form Inputs for Exact Road Coordinates & Distances -->
+                    <input type="hidden" id="pLat" name="pickupLat" value="16.4445">
+                    <input type="hidden" id="pLon" name="pickupLon" value="80.5085">
+                    <input type="hidden" id="dLat" name="dropoffLat" value="16.5175">
+                    <input type="hidden" id="dLon" name="dropoffLon" value="80.6200">
+                    <input type="hidden" id="distKm" name="distanceKm" value="24.5">
+                    <input type="hidden" id="durMins" name="durationMinutes" value="35">
+
+                    <!-- 1. Pickup Input -->
+                    <div class="mb-2 position-relative">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-muted mb-0">
+                                <i class="bi bi-record-circle-fill text-success me-1"></i> PICKUP POINT
+                            </label>
+                            <button type="button" id="btnPickMap" class="btn btn-link btn-sm p-0 text-success text-decoration-none small" onclick="toggleMapPickMode('pickup')">
+                                <i class="bi bi-cursor-fill"></i> Tap map
+                            </button>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt-fill text-success"></i></span>
+                            <input type="text" id="pickupInput" name="pickup" class="form-control border-start-0 ps-0" 
+                                   value="SRM University, AP (Neerukonda)" autocomplete="off" placeholder="Enter pickup location..."
+                                   oninput="handleAutocomplete('pickup', this.value)">
+                            <button class="btn btn-outline-light text-secondary border-start-0" type="button" onclick="clearField('pickup')">&times;</button>
+                        </div>
+                        <div id="pickupResults" class="autocomplete-dropdown"></div>
+                    </div>
+
+                    <!-- 2. Dropoff Input -->
+                    <div class="mb-3 position-relative">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-muted mb-0">
+                                <i class="bi bi-square-fill text-danger me-1"></i> DESTINATION
+                            </label>
+                            <button type="button" id="btnDropMap" class="btn btn-link btn-sm p-0 text-danger text-decoration-none small" onclick="toggleMapPickMode('dropoff')">
+                                <i class="bi bi-cursor-fill"></i> Tap map
+                            </button>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-pin-map-fill text-danger"></i></span>
+                            <input type="text" id="dropoffInput" name="dropoff" class="form-control border-start-0 ps-0" 
+                                   value="Vijayawada Railway Station (Vijayawada)" autocomplete="off" placeholder="Where do you want to go?"
+                                   oninput="handleAutocomplete('dropoff', this.value)">
+                            <button class="btn btn-outline-light text-secondary border-start-0" type="button" onclick="clearField('dropoff')">&times;</button>
+                        </div>
+                        <div id="dropoffResults" class="autocomplete-dropdown"></div>
+                    </div>
+
+                    <!-- Error Alert -->
+                    <div id="routeErrorAlert" class="alert alert-danger py-2 small rounded-3 d-none mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <span id="routeErrorText">Could not route between points.</span>
+                    </div>
+
+                    <!-- Trip Stats Live Strip -->
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row text-center g-2">
+                            <div class="col-4 border-end">
+                                <div class="text-muted small">Distance</div>
+                                <div class="fw-bold text-dark fs-6" id="statDistance">24.5 km</div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="text-muted small">Est. Time</div>
+                                <div class="fw-bold text-dark fs-6" id="statDuration">35 mins</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted small">Est. Base</div>
+                                <div class="fw-bold text-primary fs-6" id="statFare">₹463.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="btnProceedBooking" class="btn btn-toury w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                        <span>View Available Rides & Fares</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Leaflet & Live Synchronized Geocoding Engine -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         let map;
         let pickupMarker = null;
         let dropoffMarker = null;
         let roadGeoJsonLayer = null;
+        let userLocationMarker = null;
+        let mapPickMode = null; // 'pickup' | 'dropoff' | null
 
-        // Current Active Coordinates (Default initialized to Andhra Pradesh: SRM AP ➔ Vijayawada)
-        let pickupCoords = [16.4445, 80.5085];
-        let dropoffCoords = [16.5175, 80.6200];
-
-        // Map Click Selection Mode: 'none', 'pickup', 'dropoff'
-        let mapSelectionMode = 'none';
-        let autocompleteTimer = null;
+        const AP_LOCATIONS = [
+            { name: "SRM University, AP (Neerukonda)", lat: 16.4445, lon: 80.5085 },
+            { name: "Vijayawada Railway Station (Vijayawada)", lat: 16.5175, lon: 80.6200 },
+            { name: "Pandit Nehru Bus Station (PNBS), Vijayawada", lat: 16.5078, lon: 80.6186 },
+            { name: "Benz Circle, Vijayawada", lat: 16.4988, lon: 80.6508 },
+            { name: "Mangalagiri AIIMS Hospital", lat: 16.4385, lon: 80.5620 },
+            { name: "Guntur Railway Station, Guntur", lat: 16.2995, lon: 80.4370 },
+            { name: "VIT-AP University, Inavolu", lat: 16.4960, lon: 80.4990 },
+            { name: "Prakasam Barrage, Vijayawada", lat: 16.5065, lon: 80.6050 },
+            { name: "AP Secretariat, Velagapudi, Amaravati", lat: 16.5180, lon: 80.5230 },
+            { name: "Kanaka Durga Temple, Indrakeeladri, Vijayawada", lat: 16.5150, lon: 80.6060 }
+        ];
 
         function initMap() {
-            // Center map around Andhra Pradesh Amaravati / Vijayawada region
-            map = L.map('live-map').setView([16.4800, 80.5600], 11);
+            // Center between Amaravati, Mangalagiri and Vijayawada
+            map = L.map('map-fullscreen', { zoomControl: false }).setView([16.4850, 80.5650], 12);
+            L.control.zoom({ position: 'topright' }).addTo(map);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors | OSRM Driving Engine',
+                attribution: '&copy; OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
 
-            // Click listener for "Choose on Map"
+            // Handle user clicks on the map when in pick mode
             map.on('click', function(e) {
-                handleMapClick(e.latlng.lat, e.latlng.lng);
+                if (!mapPickMode) return;
+                const lat = parseFloat(e.latlng.lat.toFixed(6));
+                const lon = parseFloat(e.latlng.lng.toFixed(6));
+
+                if (mapPickMode === 'pickup') {
+                    document.getElementById('pLat').value = lat;
+                    document.getElementById('pLon').value = lon;
+                    document.getElementById('pickupInput').value = `Map Point (${lat}, ${lon})`;
+                    toggleMapPickMode(null);
+                    calculateAndRenderRoadRoute();
+                } else if (mapPickMode === 'dropoff') {
+                    document.getElementById('dLat').value = lat;
+                    document.getElementById('dLon').value = lon;
+                    document.getElementById('dropoffInput').value = `Map Point (${lat}, ${lon})`;
+                    toggleMapPickMode(null);
+                    calculateAndRenderRoadRoute();
+                }
             });
 
-            // Initial route calculation & sync
-            syncRoute();
+            // Initial calculation of standard selected route
+            calculateAndRenderRoadRoute();
         }
 
-        // Toggle "Choose on Map" for Pickup or Dropoff
         function toggleMapPickMode(mode) {
-            const alertBox = document.getElementById('mapModeAlert');
-            const alertText = document.getElementById('mapModeText');
             const btnP = document.getElementById('btnPickMap');
             const btnD = document.getElementById('btnDropMap');
 
-            if (mapSelectionMode === mode) {
-                mapSelectionMode = 'none';
-                alertBox.classList.add('d-none');
+            if (mapPickMode === mode || mode === null) {
+                mapPickMode = null;
                 btnP.classList.remove('active-pick-mode');
                 btnD.classList.remove('active-pick-mode');
+                document.getElementById('map-fullscreen').style.cursor = '';
             } else {
-                mapSelectionMode = mode;
-                alertBox.classList.remove('d-none');
+                mapPickMode = mode;
                 if (mode === 'pickup') {
-                    alertText.innerHTML = '<strong class="text-success">PICKUP MODE ACTIVE:</strong> Click any point on the map to set Pickup location.';
                     btnP.classList.add('active-pick-mode');
                     btnD.classList.remove('active-pick-mode');
                 } else {
-                    alertText.innerHTML = '<strong class="text-danger">DROPOFF MODE ACTIVE:</strong> Click any point on the map to set Destination dropoff.';
                     btnD.classList.add('active-pick-mode');
                     btnP.classList.remove('active-pick-mode');
                 }
+                document.getElementById('map-fullscreen').style.cursor = 'crosshair';
             }
         }
 
-        // User clicked on map canvas
-        function handleMapClick(lat, lng) {
-            if (mapSelectionMode === 'none') {
-                return;
+        function quickSelectPlace(type) {
+            if (type === 'home') {
+                document.getElementById('pickupInput').value = "SRM University, AP (Neerukonda)";
+                document.getElementById('pLat').value = 16.4445;
+                document.getElementById('pLon').value = 80.5085;
+            } else if (type === 'work') {
+                document.getElementById('dropoffInput').value = "AP Secretariat, Velagapudi, Amaravati";
+                document.getElementById('dLat').value = 16.5180;
+                document.getElementById('dLon').value = 80.5230;
+            } else if (type === 'recent1') {
+                document.getElementById('dropoffInput').value = "Mangalagiri AIIMS Hospital";
+                document.getElementById('dLat').value = 16.4385;
+                document.getElementById('dLon').value = 80.5620;
+            } else if (type === 'recent2') {
+                document.getElementById('dropoffInput').value = "Benz Circle, Vijayawada";
+                document.getElementById('dLat').value = 16.4988;
+                document.getElementById('dLon').value = 80.6508;
             }
-
-            // Perform Reverse Geocoding to get human-readable address
-            fetch(`/api/geo/reverse?lat=${lat}&lon=${lng}`)
-                .then(res => res.json())
-                .then(data => {
-                    const address = data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    if (mapSelectionMode === 'pickup') {
-                        document.getElementById('pickupInput').value = address;
-                        pickupCoords = [lat, lng];
-                        document.getElementById('pLat').value = lat;
-                        document.getElementById('pLon').value = lng;
-                    } else if (mapSelectionMode === 'dropoff') {
-                        document.getElementById('dropoffInput').value = address;
-                        dropoffCoords = [lat, lng];
-                        document.getElementById('dLat').value = lat;
-                        document.getElementById('dLon').value = lng;
-                    }
-                    toggleMapPickMode('none');
-                    syncRoute();
-                })
-                .catch(err => {
-                    console.error("Reverse geocoding error:", err);
-                    if (mapSelectionMode === 'pickup') {
-                        pickupCoords = [lat, lng];
-                        document.getElementById('pickupInput').value = `Selected Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-                    } else {
-                        dropoffCoords = [lat, lng];
-                        document.getElementById('dropoffInput').value = `Selected Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-                    }
-                    toggleMapPickMode('none');
-                    syncRoute();
-                });
+            calculateAndRenderRoadRoute();
         }
 
-        // Autocomplete typing handler
-        function handleAutocomplete(type, text) {
-            clearTimeout(autocompleteTimer);
-            const dropdown = document.getElementById(type === 'pickup' ? 'pickupResults' : 'dropoffResults');
-
-            if (!text || text.trim().length < 2) {
-                dropdown.style.display = 'none';
+        function getUserLocation() {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
                 return;
             }
+            const btn = document.getElementById('btnLocateMe');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
 
-            autocompleteTimer = setTimeout(() => {
-                fetch(`/api/geo/autocomplete?q=${encodeURIComponent(text)}`)
-                    .then(res => res.json())
-                    .then(items => {
-                        if (items && items.length > 0) {
-                            dropdown.innerHTML = '';
-                            items.forEach(item => {
-                                const div = document.createElement('div');
-                                div.className = 'autocomplete-item';
-                                div.innerHTML = `<i class="bi bi-geo-alt text-primary me-1"></i> ${item.display_name}`;
-                                div.onclick = function() {
-                                    selectAutocomplete(type, item.display_name, item.lat, item.lon);
-                                };
-                                dropdown.appendChild(div);
-                            });
-                            dropdown.style.display = 'block';
-                        } else {
-                            dropdown.style.display = 'none';
-                        }
-                    })
-                    .catch(e => {
-                        dropdown.style.display = 'none';
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    btn.innerHTML = '<i class="bi bi-crosshair text-primary"></i>';
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    const acc = Math.round(pos.coords.accuracy);
+
+                    document.getElementById('pLat').value = lat;
+                    document.getElementById('pLon').value = lon;
+                    document.getElementById('pickupInput').value = "Current GPS Location";
+
+                    const accBadge = document.getElementById('accuracyBadge');
+                    accBadge.classList.remove('d-none');
+                    document.getElementById('accMeters').innerText = `±${acc}m accuracy`;
+
+                    if (userLocationMarker) map.removeLayer(userLocationMarker);
+                    
+                    const gpsIcon = L.divIcon({
+                        className: 'gps-pulse-marker',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8]
                     });
-            }, 300);
+                    userLocationMarker = L.marker([lat, lon], { icon: gpsIcon }).addTo(map)
+                        .bindPopup("<b>Your Current Location</b> (±" + acc + "m)").openPopup();
+
+                    map.setView([lat, lon], 14);
+                    calculateAndRenderRoadRoute();
+                },
+                (err) => {
+                    btn.innerHTML = '<i class="bi bi-crosshair"></i>';
+                    alert("Unable to retrieve location: " + err.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
 
-        function selectAutocomplete(type, name, lat, lon) {
-            if (type === 'pickup') {
-                document.getElementById('pickupInput').value = name;
-                document.getElementById('pickupResults').style.display = 'none';
-                pickupCoords = [lat, lon];
-                document.getElementById('pLat').value = lat;
-                document.getElementById('pLon').value = lon;
-            } else {
-                document.getElementById('dropoffInput').value = name;
-                document.getElementById('dropoffResults').style.display = 'none';
-                dropoffCoords = [lat, lon];
-                document.getElementById('dLat').value = lat;
-                document.getElementById('dLon').value = lon;
+        function fitRouteBounds() {
+            if (roadGeoJsonLayer) {
+                map.fitBounds(roadGeoJsonLayer.getBounds(), { padding: [60, 60] });
             }
-            syncRoute();
         }
 
         function clearField(type) {
-            if (type === 'pickup') {
-                document.getElementById('pickupInput').value = '';
-                document.getElementById('pickupResults').style.display = 'none';
-            } else {
-                document.getElementById('dropoffInput').value = '';
-                document.getElementById('dropoffResults').style.display = 'none';
+            document.getElementById(type + 'Input').value = '';
+            document.getElementById(type === 'pickup' ? 'pLat' : 'dLat').value = '';
+            document.getElementById(type === 'pickup' ? 'pLon' : 'dLon').value = '';
+            if (type === 'pickup' && pickupMarker) map.removeLayer(pickupMarker);
+            if (type === 'dropoff' && dropoffMarker) map.removeLayer(dropoffMarker);
+            if (roadGeoJsonLayer) map.removeLayer(roadGeoJsonLayer);
+            document.getElementById('btnProceedBooking').disabled = true;
+            document.getElementById('routeBadge').innerText = "Incomplete";
+        }
+
+        function handleAutocomplete(type, query) {
+            const resultsBox = document.getElementById(type + 'Results');
+            if (!query || query.trim().length < 2) {
+                resultsBox.style.display = 'none';
+                return;
             }
+
+            const q = query.toLowerCase();
+            const matches = AP_LOCATIONS.filter(l => l.name.toLowerCase().includes(q));
+
+            if (matches.length === 0) {
+                resultsBox.innerHTML = '<div class="autocomplete-item text-muted">No exact match. Click "Tap map" to select any road.</div>';
+                resultsBox.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            matches.forEach(item => {
+                html += `<div class="autocomplete-item" onclick="selectLocation('${type}', '${item.name}', ${item.lat}, ${item.lon})">
+                            <i class="bi bi-geo-alt text-primary"></i>
+                            <div><strong>${item.name}</strong></div>
+                         </div>`;
+            });
+
+            resultsBox.innerHTML = html;
+            resultsBox.style.display = 'block';
         }
 
-        // Preset Test Routes
-        function setTestRoute(pName, pLat, pLon, dName, dLat, dLon) {
-            document.getElementById('pickupInput').value = pName;
-            document.getElementById('dropoffInput').value = dName;
-            pickupCoords = [pLat, pLon];
-            dropoffCoords = [dLat, dLon];
-            document.getElementById('pLat').value = pLat;
-            document.getElementById('pLon').value = pLon;
-            document.getElementById('dLat').value = dLat;
-            document.getElementById('dLon').value = dLon;
-            syncRoute();
+        function selectLocation(type, name, lat, lon) {
+            document.getElementById(type + 'Input').value = name;
+            document.getElementById(type === 'pickup' ? 'pLat' : 'dLat').value = lat;
+            document.getElementById(type === 'pickup' ? 'pLon' : 'dLon').value = lon;
+            document.getElementById(type + 'Results').style.display = 'none';
+            calculateAndRenderRoadRoute();
         }
 
-        // Synchronize Map Markers, OSRM Road GeoJSON Geometry, Real Road Distance & Travel Duration
-        function syncRoute() {
-            if (!pickupCoords || !dropoffCoords) return;
+        function calculateAndRenderRoadRoute() {
+            const pLat = parseFloat(document.getElementById('pLat').value);
+            const pLon = parseFloat(document.getElementById('pLon').value);
+            const dLat = parseFloat(document.getElementById('dLat').value);
+            const dLon = parseFloat(document.getElementById('dLon').value);
 
-            const badge = document.getElementById('routeSyncBadge');
+            if (isNaN(pLat) || isNaN(pLon) || isNaN(dLat) || isNaN(dLon)) return;
+
+            const badge = document.getElementById('routeBadge');
             const errorAlert = document.getElementById('routeErrorAlert');
-            const submitBtn = document.getElementById('submitBtn');
+            const submitBtn = document.getElementById('btnProceedBooking');
 
+            badge.className = "badge bg-warning-subtle text-warning";
+            badge.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Calculating Route...';
             errorAlert.classList.add('d-none');
-            badge.className = "badge bg-warning text-dark";
-            badge.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Fetching OSRM Road Geometry...';
 
-            // Clean up existing markers & previous route
             if (pickupMarker) map.removeLayer(pickupMarker);
             if (dropoffMarker) map.removeLayer(dropoffMarker);
             if (roadGeoJsonLayer) map.removeLayer(roadGeoJsonLayer);
 
-            // Custom Leaflet Markers
             const pIcon = L.divIcon({
                 className: 'custom-p',
-                html: '<div style="background-color:#10b981;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:24px;font-size:14px;">P</div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
+                html: '<div style="background-color:#10b981;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;font-size:12px;">P</div>',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             });
 
             const dIcon = L.divIcon({
                 className: 'custom-d',
-                html: '<div style="background-color:#ef4444;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:24px;font-size:14px;">D</div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
+                html: '<div style="background-color:#ef4444;width:28px;height:28px;border-radius:50%;border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);text-align:center;color:white;font-weight:bold;line-height:22px;font-size:12px;">D</div>',
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             });
 
-            pickupMarker = L.marker(pickupCoords, {icon: pIcon}).addTo(map)
+            pickupMarker = L.marker([pLat, pLon], { icon: pIcon }).addTo(map)
                 .bindPopup("<b>Pickup:</b> " + document.getElementById('pickupInput').value);
 
-            dropoffMarker = L.marker(dropoffCoords, {icon: dIcon}).addTo(map)
+            dropoffMarker = L.marker([dLat, dLon], { icon: dIcon }).addTo(map)
                 .bindPopup("<b>Destination:</b> " + document.getElementById('dropoffInput').value);
 
-            // Send actual coordinates to backend OSRM driving service
-            // pLat, pLon -> dLat, dLon
-            fetch(`/api/geo/route?pLat=${pickupCoords[0]}&pLon=${pickupCoords[1]}&dLat=${dropoffCoords[0]}&dLon=${dropoffCoords[1]}`)
+            fetch(`/api/geo/route?pLat=${pLat}&pLon=${pLon}&dLat=${dLat}&dLon=${dLon}`)
                 .then(res => res.json())
                 .then(data => {
-                    console.log("[OSRM Routing Response]", data);
                     if (data.status === 'SUCCESS' && data.geometry) {
                         const dist = data.distanceKm;
                         const dur = data.durationMinutes;
 
-                        // RENDER EXACT ROAD-FOLLOWING GEOMETRY USING L.geoJSON()
-                        // NEVER a straight line!
                         roadGeoJsonLayer = L.geoJSON(data.geometry, {
                             style: {
                                 color: '#4f46e5',
@@ -452,46 +461,32 @@
                             }
                         }).addTo(map);
 
-                        // Automatically fit the map bounds to show the complete road route and both markers
-                        map.fitBounds(roadGeoJsonLayer.getBounds(), { padding: [50, 50] });
+                        map.fitBounds(roadGeoJsonLayer.getBounds(), { padding: [80, 80] });
 
-                        // Update form state with actual road distance & time
                         document.getElementById('distKm').value = dist;
                         document.getElementById('durMins').value = dur;
-
-                        // Update UI readouts
                         document.getElementById('statDistance').innerText = dist + " km";
                         document.getElementById('statDuration').innerText = dur + " mins";
 
-                        // Fare estimate based on real road distance: Base ₹50 + (km * 14) + (mins * 2)
                         const estFare = Math.round(50.0 + (dist * 14.0) + (dur * 2.0));
                         document.getElementById('statFare').innerText = "₹" + estFare + ".00";
 
                         badge.className = "badge bg-success-subtle text-success";
-                        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Road Network Route Active';
+                        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Road Route Verified';
                         submitBtn.disabled = false;
                     } else {
-                        const errReason = data.message || `Routing returned code: ${data.code || 'UNKNOWN'}`;
-                        throw new Error(errReason);
+                        throw new Error(data.message || `Routing returned code: ${data.code || 'UNKNOWN'}`);
                     }
                 })
                 .catch(err => {
-                    console.error("[OSRM Route Error]", err);
                     badge.className = "badge bg-danger text-white";
                     badge.innerText = "Routing Failed";
-
-                    // Show authentic error alert instead of drawing an invalid straight line
                     errorAlert.classList.remove('d-none');
-                    document.getElementById('routeErrorText').innerHTML = `<strong>Routing Error:</strong> ${err.message}. If either location is deep inside a private compound, click <em>'Choose on Map'</em> to select an adjacent public road.`;
-
-                    document.getElementById('statDistance').innerText = "--";
-                    document.getElementById('statDuration').innerText = "--";
-                    document.getElementById('statFare').innerText = "--";
+                    document.getElementById('routeErrorText').innerHTML = `<strong>Routing Error:</strong> ${err.message}. Please pick adjacent public road points.`;
                     submitBtn.disabled = true;
                 });
         }
 
-        // Close dropdowns if user clicks outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('#pickupInput') && !e.target.closest('#pickupResults')) {
                 document.getElementById('pickupResults').style.display = 'none';
@@ -505,9 +500,8 @@
             const p = document.getElementById('pickupInput').value.trim();
             const d = document.getElementById('dropoffInput').value.trim();
             const dist = parseFloat(document.getElementById('distKm').value);
-
             if (!p || !d || isNaN(dist) || dist <= 0) {
-                alert("Please ensure both Pickup and Destination have valid drivable road routes before booking.");
+                alert("Please ensure both Pickup and Destination have a valid road route before booking.");
                 return false;
             }
             return true;
