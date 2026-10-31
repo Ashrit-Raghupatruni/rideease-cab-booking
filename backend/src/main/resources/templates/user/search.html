@@ -88,7 +88,7 @@
                         <input type="hidden" id="hiddenVehicleCategory" name="vehicleCategory" value="SEDAN">
 
                         <!-- Category 1: Toury Mini (Cheapest) -->
-                        <div id="card-MINI" class="vehicle-card-premium mb-3" onclick="selectCategory('MINI', 30.0, 10.0, 2.0, [[${miniFare}]])">
+                        <div id="card-MINI" class="vehicle-card-premium mb-3" th:attr="onclick=|selectCategory('MINI', 30.0, 10.0, 2.0, ${miniFare})|">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center gap-3">
                                     <!-- High-Res Vector SVG Illustration for Mini -->
@@ -121,7 +121,7 @@
                         </div>
 
                         <!-- Category 2: Toury Sedan (Prime / Recommended) -->
-                        <div id="card-SEDAN" class="vehicle-card-premium selected mb-3" onclick="selectCategory('SEDAN', 50.0, 14.0, 2.0, [[${sedanFare}]])">
+                        <div id="card-SEDAN" class="vehicle-card-premium selected mb-3" th:attr="onclick=|selectCategory('SEDAN', 50.0, 14.0, 2.0, ${sedanFare})|">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center gap-3">
                                     <!-- High-Res Vector SVG Illustration for Sedan -->
@@ -154,7 +154,7 @@
                         </div>
 
                         <!-- Category 3: Toury SUV (Comfort / Group) -->
-                        <div id="card-SUV" class="vehicle-card-premium mb-4" onclick="selectCategory('SUV', 80.0, 18.0, 2.0, [[${suvFare}]])">
+                        <div id="card-SUV" class="vehicle-card-premium mb-4" th:attr="onclick=|selectCategory('SUV', 80.0, 18.0, 2.0, ${suvFare})|">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center gap-3">
                                     <!-- High-Res Vector SVG Illustration for SUV -->
@@ -280,34 +280,65 @@
     </div>
 
     <script th:inline="javascript">
-        const distKm = parseFloat([[${distanceKm}]]);
-        const durMins = parseFloat([[${durationMinutes}]]);
+        /*<![CDATA[*/
+        const distKm = parseFloat(/*[[${distanceKm}]]*/ 24.5);
+        const durMins = parseFloat(/*[[${durationMinutes}]]*/ 35);
+        const miniPrecomputed = parseFloat(/*[[${miniFare}]]*/ 293.0);
+        const sedanPrecomputed = parseFloat(/*[[${sedanFare}]]*/ 399.8);
+        const suvPrecomputed = parseFloat(/*[[${suvFare}]]*/ 516.6);
 
         function selectCategory(category, baseFare, perKm, perMin, precomputedFare) {
+            console.log("[Vehicle Selection]", category, baseFare, perKm, perMin, precomputedFare);
+
             // Update hidden input
-            document.getElementById('hiddenVehicleCategory').value = category;
+            const hiddenInput = document.getElementById('hiddenVehicleCategory');
+            if (hiddenInput) hiddenInput.value = category;
 
             // Update card styling
             ['MINI', 'SEDAN', 'SUV'].forEach(c => {
                 const card = document.getElementById('card-' + c);
-                if (c === category) {
-                    card.classList.add('selected');
-                } else {
-                    card.classList.remove('selected');
+                if (card) {
+                    if (c === category) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
                 }
             });
 
             // Update Breakdown Panel
-            const distCharge = Math.round(distKm * perKm * 100) / 100;
-            const timeCharge = Math.round(durMins * perMin * 100) / 100;
-            const finalFare = precomputedFare || Math.round(baseFare + distCharge + timeCharge);
+            const distCharge = Math.round(distKm * perKm * 10) / 10;
+            const timeCharge = Math.round(durMins * perMin * 10) / 10;
+            let finalFare = precomputedFare;
+            if (!finalFare || isNaN(finalFare)) {
+                if (category === 'MINI') finalFare = miniPrecomputed;
+                else if (category === 'SEDAN') finalFare = sedanPrecomputed;
+                else if (category === 'SUV') finalFare = suvPrecomputed;
+                else finalFare = Math.round((baseFare + distCharge + timeCharge) * 10) / 10;
+            }
 
-            document.getElementById('summaryCategory').innerText = category === 'MINI' ? 'Toury Mini' : (category === 'SEDAN' ? 'Toury Sedan' : 'Toury SUV XL');
-            document.getElementById('summaryBase').innerText = '₹' + baseFare.toFixed(2);
-            document.getElementById('summaryDistance').innerText = '₹' + distCharge.toFixed(2);
-            document.getElementById('summaryTime').innerText = '₹' + timeCharge.toFixed(2);
-            document.getElementById('summaryTotal').innerText = '₹' + finalFare.toFixed(2);
+            const titleMap = {
+                'MINI': 'Toury Mini',
+                'SEDAN': 'Toury Sedan',
+                'SUV': 'Toury SUV XL'
+            };
+
+            const catEl = document.getElementById('summaryCategory');
+            if (catEl) catEl.innerText = titleMap[category] || category;
+
+            const baseEl = document.getElementById('summaryBase');
+            if (baseEl) baseEl.innerText = '₹' + baseFare.toFixed(1);
+
+            const distEl = document.getElementById('summaryDistance');
+            if (distEl) distEl.innerText = '₹' + distCharge.toFixed(1);
+
+            const timeEl = document.getElementById('summaryTime');
+            if (timeEl) timeEl.innerText = '₹' + timeCharge.toFixed(1);
+
+            const totalEl = document.getElementById('summaryTotal');
+            if (totalEl) totalEl.innerText = '₹' + finalFare.toFixed(1);
         }
+        /*]]>*/
     </script>
 </body>
 </html>
