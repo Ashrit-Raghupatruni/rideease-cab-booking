@@ -22,25 +22,7 @@ public class WebSecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) // Disable for REST / WebSocket testing
             .authorizeHttpRequests(auth -> auth
-                // Allow all frontend views, static assets, and testing endpoints
-                .requestMatchers(
-                    "/",
-                    "/user/**",
-                    "/driver/**",
-                    "/admin/**",
-                    "/ride/**",
-                    "/auth/**",
-                    "/css/**",
-                    "/js/**",
-                    "/images/**",
-                    "/api/auth/**",
-                    "/api/rides/**",
-                    "/api/drivers/**",
-                    "/api/geo/**",
-                    "/api/health/**",
-                    "/ws-ride/**"
-                ).permitAll()
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             );
 
         return http.build();
