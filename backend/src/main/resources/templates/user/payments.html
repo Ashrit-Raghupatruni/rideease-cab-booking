@@ -51,7 +51,10 @@
                     </div>
                     <div class="text-end">
                         <div class="h5 fw-bold text-dark mb-0" th:text="'₹' + ${b.estimatedFare}">₹213.00</div>
-                        <small class="text-muted" th:text="${b.status}">COMPLETED</small>
+                        <small class="text-muted d-block" th:text="${b.status}">COMPLETED</small>
+                        <a th:href="@{/user/receipt/{id}(id=${b.id})}" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 small">
+                            <i class="bi bi-file-earmark-arrow-down"></i> Tax Receipt
+                        </a>
                     </div>
                 </div>
             </div>

@@ -36,7 +36,16 @@ public class BookRideRequest {
     @NotNull(message = "Payment method is required")
     private Booking.PaymentMethod paymentMethod;
 
+    private String scheduledDate;
+    private String scheduledTime;
+
     public BookRideRequest() {}
+
+    public String getScheduledDate() { return scheduledDate; }
+    public void setScheduledDate(String scheduledDate) { this.scheduledDate = scheduledDate; }
+
+    public String getScheduledTime() { return scheduledTime; }
+    public void setScheduledTime(String scheduledTime) { this.scheduledTime = scheduledTime; }
 
     public String getPickupAddress() { return pickupAddress; }
     public void setPickupAddress(String pickupAddress) { this.pickupAddress = pickupAddress; }

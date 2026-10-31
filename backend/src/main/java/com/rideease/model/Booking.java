@@ -37,6 +37,10 @@ public class Booking {
     private String otp; // Verification OTP for ride start
     private int otpAttempts = 0; // Track failed verification attempts
 
+    // Scheduled Rides Support
+    private boolean scheduled = false;
+    private Instant scheduledTime;
+
     private PaymentStatus paymentStatus;
     private PaymentMethod paymentMethod;
     private String paymentTransactionId;
@@ -95,6 +99,12 @@ public class Booking {
     public int getOtpAttempts() { return otpAttempts; }
     public void setOtpAttempts(int otpAttempts) { this.otpAttempts = otpAttempts; }
 
+    public boolean isScheduled() { return scheduled; }
+    public void setScheduled(boolean scheduled) { this.scheduled = scheduled; }
+
+    public Instant getScheduledTime() { return scheduledTime; }
+    public void setScheduledTime(Instant scheduledTime) { this.scheduledTime = scheduledTime; }
+
     public PaymentStatus getPaymentStatus() { return paymentStatus; }
     public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
 
@@ -133,6 +143,7 @@ public class Booking {
     public enum PaymentMethod {
         CASH,
         ONLINE,
-        WALLET
+        WALLET,
+        UPI
     }
 }

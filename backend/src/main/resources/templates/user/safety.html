@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safety Centre — RideEase 24/7 Security</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/toury.css}">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg bg-gradient-toury navbar-dark shadow-sm py-2">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" th:href="@{/user/home}">
+                <i class="bi bi-arrow-left"></i> Home
+            </a>
+            <span class="badge bg-danger-subtle text-danger border px-3 py-2 rounded-pill fw-bold">
+                <i class="bi bi-shield-lock-fill me-1"></i> RideEase 24/7 Safety Shield
+            </span>
+        </div>
+    </nav>
+
+    <div class="container my-4" style="max-width: 820px;">
+        
+        <!-- SOS Banner Alert -->
+        <div th:if="${param.sos}" class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 p-3 rounded-4 mb-4">
+            <i class="bi bi-exclamation-octagon-fill fs-2 text-danger"></i>
+            <div>
+                <strong class="d-block fs-6">EMERGENCY SOS BROADCAST ACTIVE</strong>
+                <span class="small">Our 24x7 Safety Response Team and your emergency contacts have been notified with your live trip coordinates.</span>
+            </div>
+        </div>
+
+        <!-- 1. Urgent SOS Emergency Button Card -->
+        <div class="toury-card p-4 mb-4 border-2 border-danger border-opacity-50">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h1 class="h5 fw-bold text-danger mb-1"><i class="bi bi-shield-fill-exclamation me-1"></i> SOS Emergency Dispatch</h1>
+                    <p class="text-muted small mb-0">Instantly transmits live GPS coordinates to local emergency police (112) and saved contacts</p>
+                </div>
+                <form th:action="@{/user/safety/sos}" method="post" onsubmit="return confirm('Trigger 24/7 emergency dispatch immediately?');">
+                    <button type="submit" class="btn btn-danger btn-lg px-4 py-3 fw-bold rounded-pill shadow d-flex align-items-center gap-2">
+                        <i class="bi bi-telephone-outbound-fill"></i>
+                        <span>ACTIVATE SOS</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 2. Emergency Contacts Management -->
+            <div class="col-lg-7">
+                <div class="toury-card p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="h6 fw-bold text-dark mb-0">Trusted Emergency Contacts</h2>
+                            <p class="text-muted small mb-0">Receive automated trip tracking link when your ride begins</p>
+                        </div>
+                    </div>
+
+                    <!-- Contact List -->
+                    <div th:if="${#lists.isEmpty(contacts)}" class="text-center py-4 bg-light rounded-3 mb-3 border">
+                        <i class="bi bi-person-heart fs-2 text-secondary"></i>
+                        <p class="small text-muted mb-0 mt-1">No emergency contacts added yet.</p>
+                    </div>
+
+                    <div th:unless="${#lists.isEmpty(contacts)}" class="list-group mb-3">
+                        <div th:each="c : ${contacts}" class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <div>
+                                <strong class="text-dark" th:text="${c.name}">Aman Sharma</strong>
+                                <span class="badge bg-secondary-subtle text-dark ms-2 small" th:text="${c.relationship}">Family</span>
+                                <div class="small text-muted"><i class="bi bi-telephone me-1"></i> <span th:text="${c.phone}">+91 98765 00000</span></div>
+                            </div>
+                            <form th:action="@{/user/safety/contact/delete}" method="post">
+                                <input type="hidden" name="contactId" th:value="${c.id}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger border-0">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Add Contact Form -->
+                    <form th:action="@{/user/safety/contact/add}" method="post" class="p-3 bg-light rounded-3 border">
+                        <div class="fw-semibold small text-dark mb-2">+ Add Trusted Contact</div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <input type="text" name="name" class="form-control form-control-sm" placeholder="Contact Name" required>
+                            </div>
+                            <div class="col-6">
+                                <input type="tel" name="phone" class="form-control form-control-sm" placeholder="Phone Number" required>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select name="relationship" class="form-select form-select-sm">
+                                <option value="Parent">Parent</option>
+                                <option value="Spouse">Spouse</option>
+                                <option value="Sibling">Sibling</option>
+                                <option value="Friend">Friend</option>
+                            </select>
+                            <button type="submit" class="btn btn-toury btn-sm px-3 text-nowrap">Save Contact</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 3. Safety Features & Driver Background Verification -->
+            <div class="col-lg-5">
+                <div class="toury-card p-4 h-100">
+                    <h2 class="h6 fw-bold text-dark mb-3">Safety Verification Standards</h2>
+
+                    <div class="d-flex gap-3 mb-3">
+                        <div class="p-2 bg-success-subtle text-success rounded-circle"><i class="bi bi-patch-check-fill fs-5"></i></div>
+                        <div>
+                            <strong class="d-block small text-dark">100% Background-Checked Captains</strong>
+                            <span class="small text-muted">Aadhaar, driving license & police clearance record verified.</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mb-3">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-circle"><i class="bi bi-shield-shaded fs-5"></i></div>
+                        <div>
+                            <strong class="d-block small text-dark">4-Digit Start OTP Protection</strong>
+                            <span class="small text-muted">Driver cannot begin trip until you verify OTP inside the vehicle.</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <div class="p-2 bg-warning-subtle text-warning rounded-circle"><i class="bi bi-geo-alt-fill fs-5"></i></div>
+                        <div>
+                            <strong class="d-block small text-dark">Real-Time Route Deviation Alert</strong>
+                            <span class="small text-muted">Automated server radar alerts when vehicle veers off verified OSRM road geometry.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

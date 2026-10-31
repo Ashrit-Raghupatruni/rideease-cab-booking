@@ -189,9 +189,15 @@
                         <!-- Payment Method Toggle -->
                         <div class="p-3 bg-light rounded-3 mb-4 border">
                             <label class="form-label small fw-bold text-muted mb-2">PAYMENT METHOD</label>
-                            <div class="d-flex gap-3">
+                            <div class="d-flex flex-wrap gap-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="paymentMethod" id="payWallet" value="WALLET" checked>
+                                    <input class="form-check-input" type="radio" name="paymentMethod" id="payUpi" value="UPI" checked>
+                                    <label class="form-check-label fw-semibold small" for="payUpi">
+                                        <i class="bi bi-qr-code text-info me-1"></i> Instant UPI (GPay/PhonePe)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="paymentMethod" id="payWallet" value="WALLET">
                                     <label class="form-check-label fw-semibold small" for="payWallet">
                                         <i class="bi bi-wallet2 text-primary me-1"></i> In-App Toury Wallet
                                     </label>
@@ -201,6 +207,22 @@
                                     <label class="form-check-label fw-semibold small" for="payCash">
                                         <i class="bi bi-cash-stack text-success me-1"></i> Cash to Captain
                                     </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scheduled Rides Section -->
+                        <div class="p-3 bg-light rounded-3 mb-4 border">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label small fw-bold text-muted mb-0">SCHEDULE FOR LATER</label>
+                                <span class="badge bg-secondary-subtle text-secondary small">Optional</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="date" name="scheduledDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6">
+                                    <input type="time" name="scheduledTime" class="form-control form-control-sm">
                                 </div>
                             </div>
                         </div>
