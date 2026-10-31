@@ -175,7 +175,7 @@
                                 <span class="badge bg-warning text-dark fw-bold" th:text="${req.vehicleCategory}">SEDAN</span>
                                 <span class="text-muted small ms-2" th:text="${req.distanceKm} + ' km • ' + ${req.durationMinutes} + ' mins'">24.5 km</span>
                             </div>
-                            <div class="h4 fw-bold text-dark mb-0" th:text="'₹' + ${req.fare}">₹463.00</div>
+                            <div class="h4 fw-bold text-dark mb-0" th:text="'₹' + ${req.estimatedFare}">₹463.00</div>
                         </div>
 
                         <div class="small text-muted mb-3">
@@ -202,7 +202,7 @@
                     <div th:each="trip : ${myDriverTrips}" class="p-3 rounded-3 bg-light border">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="badge bg-primary px-3 py-1 rounded-pill" th:text="${trip.status}">ACCEPTED</span>
-                            <div class="h5 fw-bold text-dark mb-0" th:text="'₹' + ${trip.fare}">₹463.00</div>
+                            <div class="h5 fw-bold text-dark mb-0" th:text="'₹' + ${trip.estimatedFare}">₹463.00</div>
                         </div>
 
                         <div class="small text-muted mb-3">

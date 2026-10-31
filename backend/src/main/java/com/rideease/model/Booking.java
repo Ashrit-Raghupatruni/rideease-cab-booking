@@ -90,6 +90,13 @@ public class Booking {
     public Double getFinalFare() { return finalFare; }
     public void setFinalFare(Double finalFare) { this.finalFare = finalFare; }
 
+    /**
+     * Convenient getter for templates: returns finalFare if settled, otherwise estimatedFare.
+     */
+    public double getFare() {
+        return finalFare != null ? finalFare : estimatedFare;
+    }
+
     public BookingStatus getStatus() { return status; }
     public void setStatus(BookingStatus status) { this.status = status; }
 
