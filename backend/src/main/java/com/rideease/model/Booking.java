@@ -84,6 +84,13 @@ public class Booking {
     public int getEstimatedDurationMinutes() { return estimatedDurationMinutes; }
     public void setEstimatedDurationMinutes(int estimatedDurationMinutes) { this.estimatedDurationMinutes = estimatedDurationMinutes; }
 
+    /**
+     * Convenient getter alias for templates: durationMinutes -> estimatedDurationMinutes.
+     */
+    public int getDurationMinutes() {
+        return estimatedDurationMinutes;
+    }
+
     public double getEstimatedFare() { return estimatedFare; }
     public void setEstimatedFare(double estimatedFare) { this.estimatedFare = estimatedFare; }
 
