@@ -197,23 +197,23 @@
                     </div>
                 </div>
 
-                <!-- B. ACTIVE ONGOING TRIP (Accepted / In Progress) -->
-                <div th:if="${!#lists.isEmpty(myDriverTrips)}" class="mb-2">
-                    <div th:each="trip : ${myDriverTrips}" class="p-3 rounded-3 bg-light border">
+                <!-- B. ACTIVE ONGOING TRIP (Accepted / In Progress / Arriving) -->
+                <div th:if="${activeTrip != null}" class="mb-3">
+                    <div class="p-3 rounded-3 bg-light border border-primary border-2 shadow-sm">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-primary px-3 py-1 rounded-pill" th:text="${trip.status}">ACCEPTED</span>
-                            <div class="h5 fw-bold text-dark mb-0" th:text="'₹' + ${trip.estimatedFare}">₹463.00</div>
+                            <span class="badge bg-primary px-3 py-1 rounded-pill" th:text="${activeTrip.status}">ACCEPTED</span>
+                            <div class="h5 fw-bold text-dark mb-0" th:text="'₹' + ${activeTrip.estimatedFare}">₹463.00</div>
                         </div>
 
                         <div class="small text-muted mb-3">
-                            <div class="text-truncate mb-1"><i class="bi bi-record-circle-fill text-success me-1"></i> Pickup: <strong class="text-dark" th:text="${trip.pickupAddress}">Pickup</strong></div>
-                            <div class="text-truncate"><i class="bi bi-square-fill text-danger me-1"></i> Dropoff: <strong class="text-dark" th:text="${trip.dropoffAddress}">Dropoff</strong></div>
+                            <div class="text-truncate mb-1"><i class="bi bi-record-circle-fill text-success me-1"></i> Pickup: <strong class="text-dark" th:text="${activeTrip.pickupAddress}">Pickup</strong></div>
+                            <div class="text-truncate"><i class="bi bi-square-fill text-danger me-1"></i> Dropoff: <strong class="text-dark" th:text="${activeTrip.dropoffAddress}">Dropoff</strong></div>
                         </div>
 
                         <!-- Step 1: Start Trip with Passenger OTP -->
-                        <div th:if="${trip.status.name() == 'ACCEPTED'}">
+                        <div th:if="${activeTrip.status.name() == 'ACCEPTED' or activeTrip.status.name() == 'ARRIVING'}">
                             <form th:action="@{/driver/ride/start}" method="post" class="row g-2">
-                                <input type="hidden" name="bookingId" th:value="${trip.id}">
+                                <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <div class="col-8">
                                     <input type="text" name="otp" class="form-control fw-bold text-center letter-spacing" placeholder="Enter Rider 4-digit OTP" maxlength="4" required>
                                 </div>
@@ -226,26 +226,22 @@
                         </div>
 
                         <!-- Step 2: Complete Trip & Settle -->
-                        <div th:if="${trip.status.name() == 'IN_PROGRESS'}">
+                        <div th:if="${activeTrip.status.name() == 'IN_PROGRESS'}">
                             <form th:action="@{/driver/ride/complete}" method="post">
-                                <input type="hidden" name="bookingId" th:value="${trip.id}">
+                                <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
                                     <i class="bi bi-flag-fill me-1"></i> Arrived at Destination — Complete Trip
                                 </button>
                             </form>
                         </div>
-
-                        <div th:if="${trip.status.name() == 'COMPLETED'}" class="text-success small fw-bold text-center mt-2">
-                            <i class="bi bi-check2-all"></i> Trip Completed & Ledger Updated
-                        </div>
                     </div>
                 </div>
 
                 <!-- C. IDLE STATE: No Active Trips & No Requests -->
-                <div th:if="${#lists.isEmpty(incomingRequests) and #lists.isEmpty(myDriverTrips)}" class="text-center py-3">
+                <div th:if="${#lists.isEmpty(incomingRequests) and activeTrip == null}" class="text-center py-4">
                     <i class="bi bi-radar text-success fs-1 mb-2 d-block"></i>
                     <h3 class="h6 fw-bold text-dark mb-1">Radar Searching for Bookings...</h3>
-                    <p class="text-muted small mb-0">Stay in high-demand zones around Vijayawada and Amaravati.</p>
+                    <p class="text-muted small mb-0">You are online. Stay in high-demand zones around Vijayawada and Amaravati.</p>
                 </div>
 
             </div>
@@ -260,10 +256,7 @@
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <script th:inline="javascript">
         /*<![CDATA[*/
-        let activeTrip = null;
-        /*[# th:if="${!#lists.isEmpty(myDriverTrips)}"]*/
-        activeTrip = /*[[${myDriverTrips[0]}]]*/ null;
-        /*[/]*/
+        let activeTrip = /*[[${activeTrip}]]*/ null;
 
         let pickupPos = [16.4445, 80.5085];
         let dropPos = [16.5175, 80.6200];

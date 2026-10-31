@@ -129,7 +129,16 @@ public class WebViewController {
         List<Booking> incomingRequests = bookingRepository.findByStatus(Booking.BookingStatus.SEARCHING);
         model.addAttribute("incomingRequests", incomingRequests);
 
+        // Fetch driver's active trip first (ACCEPTED, ARRIVING, IN_PROGRESS)
         List<Booking> myDriverTrips = bookingRepository.findByDriverIdOrderByCreatedAtDesc(driverUserId);
+        
+        Optional<Booking> activeTripOpt = myDriverTrips.stream()
+                .filter(b -> b.getStatus() == Booking.BookingStatus.ACCEPTED ||
+                             b.getStatus() == Booking.BookingStatus.ARRIVING ||
+                             b.getStatus() == Booking.BookingStatus.IN_PROGRESS)
+                .findFirst();
+
+        model.addAttribute("activeTrip", activeTripOpt.orElse(null));
         model.addAttribute("myDriverTrips", myDriverTrips);
 
         double realEarnings = myDriverTrips.stream()
