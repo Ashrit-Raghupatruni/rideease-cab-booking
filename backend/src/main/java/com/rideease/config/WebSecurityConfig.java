@@ -28,6 +28,8 @@ public class WebSecurityConfig {
                     "/user/**",
                     "/driver/**",
                     "/admin/**",
+                    "/ride/**",
+                    "/auth/**",
                     "/css/**",
                     "/js/**",
                     "/images/**",

@@ -342,7 +342,7 @@ public class RideOperationController {
     /**
      * 7. User or Admin Cancels Booking with Ownership Verification
      */
-    @PostMapping("/ride/cancel")
+    @PostMapping({"/ride/cancel", "/user/cancel"})
     public String cancelRide(
             @RequestParam String bookingId,
             @RequestParam(defaultValue = "user") String role,
