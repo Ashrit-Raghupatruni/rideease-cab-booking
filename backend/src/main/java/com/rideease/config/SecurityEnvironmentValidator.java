@@ -11,18 +11,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SecurityEnvironmentValidator {
 
-    @Value("${spring.data.mongodb.uri:}")
-    private String mongoUri;
+    @Value("${spring.datasource.url:}")
+    private String datasourceUrl;
 
     @Value("${jwt.secret:}")
     private String jwtSecret;
 
     @PostConstruct
     public void validateRequiredSecrets() {
-        if (mongoUri == null || mongoUri.isBlank()) {
+        if (datasourceUrl == null || datasourceUrl.isBlank()) {
             throw new IllegalStateException(
-                    "FATAL STARTUP FAILURE: 'SPRING_DATA_MONGODB_URI' is not configured. " +
-                    "Set the SPRING_DATA_MONGODB_URI environment variable before starting RideEase."
+                    "FATAL STARTUP FAILURE: 'spring.datasource.url' is not configured. " +
+                    "Set the database URL before starting RideEase."
             );
         }
 
