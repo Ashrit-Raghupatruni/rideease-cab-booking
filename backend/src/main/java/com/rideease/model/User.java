@@ -1,29 +1,30 @@
 package com.rideease.model;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import jakarta.persistence.*;
 import java.time.Instant;
 
-@Document(collection = "users")
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_user_email", columnList = "email", unique = true),
+    @Index(name = "idx_user_phone", columnList = "phone", unique = true)
+})
 public class User {
 
     @Id
+    @Column(length = 64)
     private String id;
 
     private String name;
 
-    @Indexed(unique = true)
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Indexed(unique = true)
+    @Column(nullable = false, unique = true)
     private String phone;
 
     private String password;
 
+    @Enumerated(EnumType.STRING)
     private Role role;
 
     private String profilePhotoUrl;
@@ -31,11 +32,22 @@ public class User {
     private boolean active = true;
     private double walletBalance = 1500.00;
 
-    @CreatedDate
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
 
-    @LastModifiedDate
-    private Instant updatedAt;
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
+        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.updatedAt == null) this.updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 
     public User() {}
 
@@ -49,8 +61,8 @@ public class User {
         this.role = role;
         this.profilePhotoUrl = profilePhotoUrl;
         this.active = active;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.updatedAt = updatedAt != null ? updatedAt : Instant.now();
     }
 
     public String getId() { return id; }

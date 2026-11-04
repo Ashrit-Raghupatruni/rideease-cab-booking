@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefHeight="720.0" prefWidth="1100.0" style="-fx-background-color: #f8fafc; -fx-font-family: 'Segoe UI', sans-serif;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.rideease.javafx.controller.MainConsoleController">
+    <!-- Top Header -->
+    <top>
+        <VBox style="-fx-background-color: #0f172a; -fx-padding: 16px 24px;">
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <Label style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" text="RideEase Fleet &amp; Verification Command Center" />
+                <Label style="-fx-background-color: #1e293b; -fx-text-fill: #38bdf8; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-size: 11px;" text="JavaFX Desktop / MySQL" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="refreshButton" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px; -fx-padding: 6px 14px;" text="🔄 Refresh Database" />
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Center Content -->
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <!-- TAB 1: DRIVER & VEHICLE COMPLIANCE VERIFICATION -->
+            <Tab text="Driver &amp; Vehicle Document Verifications">
+                <VBox spacing="14.0" style="-fx-padding: 18px;">
+                    <!-- Filter and Search Bar -->
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: white; -fx-padding: 12px; -fx-background-radius: 10px; -fx-border-color: #e2e8f0; -fx-border-radius: 10px;">
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Search:" />
+                        <TextField fx:id="searchField" prefWidth="250.0" promptText="Search name, license, plate, or car..." style="-fx-background-radius: 6px;" />
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Status:" />
+                        <ComboBox fx:id="statusFilterCombo" prefWidth="150.0" />
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Category:" />
+                        <ComboBox fx:id="categoryFilterCombo" prefWidth="150.0" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <ProgressBar fx:id="actionProgressBar" prefWidth="120.0" visible="false" />
+                    </HBox>
+
+                    <!-- Split View: Table on Left, Cloudinary Document Inspector on Right -->
+                    <SplitPane dividerPositions="0.68" VBox.vgrow="ALWAYS">
+                        <!-- TableView of Drivers -->
+                        <VBox style="-fx-background-color: white; -fx-background-radius: 8px;">
+                            <TableView fx:id="driversTableView" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="colDriverId" prefWidth="85.0" text="Driver ID" />
+                                    <TableColumn fx:id="colDriverName" prefWidth="120.0" text="Driver Name" />
+                                    <TableColumn fx:id="colLicense" prefWidth="120.0" text="License Plate" />
+                                    <TableColumn fx:id="colCategory" prefWidth="75.0" text="Category" />
+                                    <TableColumn fx:id="colVehicleModel" prefWidth="130.0" text="Vehicle Model" />
+                                    <TableColumn fx:id="colPlate" prefWidth="110.0" text="Reg Plate" />
+                                    <TableColumn fx:id="colStatus" prefWidth="95.0" text="Status" />
+                                    <TableColumn fx:id="colRating" prefWidth="65.0" text="Rating" />
+                                </columns>
+                            </TableView>
+                        </VBox>
+
+                        <!-- Document & Photo Inspection Panel -->
+                        <VBox spacing="12.0" style="-fx-background-color: white; -fx-padding: 16px; -fx-border-color: #e2e8f0;">
+                            <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Driver &amp; Vehicle Compliance Dossier" />
+                            
+                            <HBox alignment="CENTER" style="-fx-padding: 8px; -fx-background-color: #f1f5f9; -fx-background-radius: 10px;">
+                                <ImageView fx:id="driverPhotoView" fitHeight="130.0" fitWidth="130.0" pickOnBounds="true" preserveRatio="true" />
+                            </HBox>
+
+                            <VBox spacing="6.0">
+                                <Label fx:id="selectedDriverLabel" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" text="Select a driver from the table" />
+                                <Label fx:id="selectedPlateLabel" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" text="Vehicle Details" />
+                                <HBox spacing="8.0">
+                                    <Label style="-fx-font-weight: bold;" text="Current Status:" />
+                                    <Label fx:id="selectedStatusLabel" style="-fx-font-weight: bold; -fx-text-fill: #2563eb;" text="N/A" />
+                                </HBox>
+                                <Label fx:id="statusNoteLabel" style="-fx-text-fill: #475569; -fx-font-size: 12px;" text="Select driver to inspect Cloudinary-stored documents." wrapText="true" />
+                            </VBox>
+
+                            <Region VBox.vgrow="ALWAYS" />
+
+                            <!-- Action Buttons with Event Handlers -->
+                            <VBox spacing="8.0">
+                                <Button fx:id="approveButton" maxWidth="Infinity" style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px;" text="✅ Approve Driver &amp; Vehicle" />
+                                <Button fx:id="rejectButton" maxWidth="Infinity" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px;" text="❌ Reject with Feedback" />
+                            </VBox>
+                        </VBox>
+                    </SplitPane>
+                </VBox>
+            </Tab>
+
+            <!-- TAB 2: FLEET DISPATCH & ANALYTICS CHARTS -->
+            <Tab text="Fleet Analytics &amp; Dispatch Metrics">
+                <HBox spacing="16.0" style="-fx-padding: 20px;">
+                    <VBox style="-fx-background-color: white; -fx-background-radius: 12px; -fx-padding: 16px; -fx-border-color: #e2e8f0;" HBox.hgrow="ALWAYS">
+                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Fleet Verification Distribution" />
+                        <PieChart fx:id="fleetDistributionChart" VBox.vgrow="ALWAYS" />
+                    </VBox>
+                    <VBox style="-fx-background-color: white; -fx-background-radius: 12px; -fx-padding: 16px; -fx-border-color: #e2e8f0;" HBox.hgrow="ALWAYS">
+                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Vehicle Category Capacity" />
+                        <BarChart fx:id="bookingsBarChart" VBox.vgrow="ALWAYS">
+                            <xAxis>
+                                <CategoryAxis label="Vehicle Category" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis label="Active Fleet Count" />
+                            </yAxis>
+                        </BarChart>
+                    </VBox>
+                </HBox>
+            </Tab>
+        </TabPane>
+    </center>
+</BorderPane>

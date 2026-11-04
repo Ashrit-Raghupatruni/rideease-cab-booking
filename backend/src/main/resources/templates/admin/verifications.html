@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver & Vehicle Document Verification - Admin Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/toury.css}">
+    <style>
+        .doc-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold" th:href="@{/admin/dashboard}">
+            <i class="bi bi-shield-lock-fill text-danger me-2"></i>RideEase Admin Console
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <a th:href="@{/admin/dashboard}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+            <a th:href="@{/admin/verifications}" class="btn btn-warning btn-sm active">
+                <i class="bi bi-patch-check me-1"></i> Document Verifications
+            </a>
+            <a th:href="@{/admin/logout}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid py-4 px-4">
+
+    <!-- Flash Messages -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${warning}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">Driver & Vehicle Compliance Verification</h3>
+            <p class="text-muted mb-0">Review driver credentials and vehicle documents stored on Cloudinary before enabling dispatch eligibility</p>
+        </div>
+    </div>
+
+    <!-- PENDING VERIFICATIONS TABLE -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+            <h5 class="fw-bold mb-0 text-warning">
+                <i class="bi bi-hourglass-split me-2"></i>Pending Verification Queue
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Driver Photo</th>
+                        <th>Driver Details</th>
+                        <th>License Number</th>
+                        <th>Vehicle & Reg No.</th>
+                        <th>Documents (Cloudinary)</th>
+                        <th>Status</th>
+                        <th class="text-end">Verification Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(pendingDrivers)}">
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-check2-all fs-2 d-block mb-1 text-success"></i>
+                            All pending driver applications have been reviewed!
+                        </td>
+                    </tr>
+                    <tr th:each="d : ${pendingDrivers}">
+                        <td>
+                            <img th:if="${d.driverPhotoUrl != null}" th:src="${d.driverPhotoUrl}" alt="Driver" class="doc-thumb shadow-sm">
+                            <span th:if="${d.driverPhotoUrl == null}" class="badge bg-secondary">No Photo</span>
+                        </td>
+                        <td>
+                            <strong th:text="${d.userId}">User</strong>
+                            <small class="d-block text-muted">Rating: <span th:text="${d.rating}">5.0</span>★</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace" th:text="${d.licenseNumber}">AP39 1234</span>
+                            <a th:if="${d.licensePhotoUrl != null}" th:href="${d.licensePhotoUrl}" target="_blank" class="d-block text-primary small mt-1">
+                                <i class="bi bi-file-earmark-image me-1"></i>View License
+                            </a>
+                        </td>
+                        <td>
+                            <!-- Linked Vehicle matching driver id -->
+                            <div th:each="veh : ${allVehicles}" th:if="${veh.driverId == d.id}">
+                                <strong th:text="${veh.make + ' ' + veh.model}">Car</strong>
+                                <span class="badge bg-primary text-uppercase" th:text="${veh.category}">SEDAN</span>
+                                <small class="d-block text-muted font-monospace" th:text="${veh.registrationNumber}">AP 16 TC 4589</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                <a th:if="${d.rcDocumentUrl != null}" th:href="${d.rcDocumentUrl}" target="_blank" class="btn btn-outline-secondary btn-sm" title="RC Book">
+                                    <i class="bi bi-card-checklist"></i> RC
+                                </a>
+                                <a th:if="${d.insuranceDocumentUrl != null}" th:href="${d.insuranceDocumentUrl}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Insurance">
+                                    <i class="bi bi-shield-check"></i> Ins
+                                </a>
+                                <a th:if="${d.permitDocumentUrl != null}" th:href="${d.permitDocumentUrl}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Permit">
+                                    <i class="bi bi-file-text"></i> Permit
+                                </a>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-warning text-dark">PENDING</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2">
+                                <form th:action="@{/admin/verification/action}" method="POST">
+                                    <input type="hidden" name="driverId" th:value="${d.id}">
+                                    <input type="hidden" name="action" value="APPROVE">
+                                    <button type="submit" class="btn btn-success btn-sm fw-semibold">
+                                        <i class="bi bi-check-lg me-1"></i> Approve
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" th:data-bs-target="'#rejectModal-' + ${d.id}">
+                                    <i class="bi bi-x-lg me-1"></i> Reject
+                                </button>
+                            </div>
+
+                            <!-- Reject Modal -->
+                            <div class="modal fade" th:id="'rejectModal-' + ${d.id}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form th:action="@{/admin/verification/action}" method="POST">
+                                            <input type="hidden" name="driverId" th:value="${d.id}">
+                                            <input type="hidden" name="action" value="REJECT">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title fw-bold">Reject Driver Verification</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body text-start">
+                                                <label class="form-label fw-semibold">Reason for Rejection *</label>
+                                                <textarea name="reason" class="form-control" rows="3" placeholder="e.g. Blurred RC book scan or expired insurance policy." required></textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-danger">Confirm Rejection</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- APPROVED FLEET TABLE -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-bottom py-3">
+            <h5 class="fw-bold mb-0 text-success">
+                <i class="bi bi-patch-check-fill me-2"></i>Approved & Active Fleet
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Driver Photo</th>
+                        <th>Driver Details</th>
+                        <th>License Number</th>
+                        <th>Vehicle & Plate</th>
+                        <th>Documents</th>
+                        <th>Live Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(verifiedDrivers)}">
+                        <td colspan="6" class="text-center py-4 text-muted">No verified drivers yet.</td>
+                    </tr>
+                    <tr th:each="d : ${verifiedDrivers}">
+                        <td>
+                            <img th:if="${d.driverPhotoUrl != null}" th:src="${d.driverPhotoUrl}" alt="Driver" class="doc-thumb shadow-sm">
+                            <span th:if="${d.driverPhotoUrl == null}" class="badge bg-secondary">No Photo</span>
+                        </td>
+                        <td>
+                            <strong th:text="${d.userId}">User</strong>
+                            <small class="d-block text-muted">Completed Trips: <span th:text="${d.totalTrips}">0</span></small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace" th:text="${d.licenseNumber}">AP39 1234</span>
+                        </td>
+                        <td>
+                            <div th:each="veh : ${allVehicles}" th:if="${veh.driverId == d.id}">
+                                <strong th:text="${veh.make + ' ' + veh.model}">Car</strong>
+                                <span class="badge bg-success" th:text="${veh.category}">SEDAN</span>
+                                <small class="d-block text-muted font-monospace" th:text="${veh.registrationNumber}">AP 16 TC 4589</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                <a th:if="${d.rcDocumentUrl != null}" th:href="${d.rcDocumentUrl}" target="_blank" class="btn btn-sm btn-outline-primary">RC</a>
+                                <a th:if="${d.insuranceDocumentUrl != null}" th:href="${d.insuranceDocumentUrl}" target="_blank" class="btn btn-sm btn-outline-primary">Insurance</a>
+                            </div>
+                        </td>
+                        <td>
+                            <span th:if="${d.online}" class="badge bg-success">ONLINE</span>
+                            <span th:unless="${d.online}" class="badge bg-secondary">OFFLINE</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

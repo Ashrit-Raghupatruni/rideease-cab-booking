@@ -1,23 +1,34 @@
 package com.rideease.model;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import jakarta.persistence.*;
 import java.time.Instant;
 
-@Document(collection = "safety_contacts")
+@Entity
+@Table(name = "safety_contacts", indexes = {
+    @Index(name = "idx_safety_contact_user", columnList = "userId")
+})
 public class SafetyContact {
 
     @Id
+    @Column(length = 64)
     private String id;
+
+    @Column(nullable = false, length = 64)
     private String userId;
+
     private String name;
     private String phone;
     private String relationship;
 
-    @CreatedDate
     private Instant createdAt = Instant.now();
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
+        if (this.createdAt == null) this.createdAt = Instant.now();
+    }
 
     public SafetyContact() {}
 

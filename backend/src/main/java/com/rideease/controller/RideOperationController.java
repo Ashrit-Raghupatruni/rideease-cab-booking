@@ -15,12 +15,8 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,9 +46,6 @@ public class RideOperationController {
 
     @Autowired
     private RoadRoutingService roadRoutingService;
-
-    @Autowired
-    private MongoTemplate mongoTemplate;
 
     @Autowired
     private com.rideease.service.RealtimeDispatchService realtimeDispatchService;
@@ -103,12 +96,15 @@ public class RideOperationController {
         String otp = String.format("%04d", new SecureRandom().nextInt(10000));
 
         Booking booking = new Booking();
+        booking.setId("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         booking.setPassengerId(userId);
         booking.setVehicleCategory(request.getVehicleCategory());
         booking.setPickupAddress(request.getPickupAddress().trim());
-        booking.setPickupLocation(new GeoJsonPoint(request.getPickupLon(), request.getPickupLat()));
+        booking.setPickupLatitude(request.getPickupLat());
+        booking.setPickupLongitude(request.getPickupLon());
         booking.setDropoffAddress(request.getDropoffAddress().trim());
-        booking.setDropoffLocation(new GeoJsonPoint(request.getDropoffLon(), request.getDropoffLat()));
+        booking.setDropoffLatitude(request.getDropoffLat());
+        booking.setDropoffLongitude(request.getDropoffLon());
         booking.setDistanceKm(distanceKm);
         booking.setEstimatedDurationMinutes(durationMinutes);
         booking.setEstimatedFare(fare);
@@ -131,9 +127,10 @@ public class RideOperationController {
     }
 
     /**
-     * 2. Driver Accepts Ride Request (Atomic Find-and-Modify)
+     * 2. Driver Accepts Ride Request (Transactional and Atomic)
      */
     @PostMapping("/driver/ride/accept")
+    @Transactional
     public String driverAcceptRide(
             @RequestParam String bookingId,
             HttpSession session
@@ -143,21 +140,19 @@ public class RideOperationController {
             return "redirect:/driver/login";
         }
 
-        Query query = new Query(Criteria.where("_id").is(bookingId)
-                .and("status").in(Booking.BookingStatus.SEARCHING, Booking.BookingStatus.REQUESTED));
-
-        Update update = new Update()
-                .set("driverId", driverUserId)
-                .set("status", Booking.BookingStatus.ACCEPTED)
-                .set("updatedAt", Instant.now());
-
-        Booking acceptedBooking = mongoTemplate.findAndModify(query, update, Booking.class);
-
-        if (acceptedBooking == null) {
-            log.info("Driver {} could not accept booking {}: already accepted or cancelled", driverUserId, bookingId);
-        } else {
-            log.info("Driver {} accepted booking {}", driverUserId, bookingId);
-            realtimeDispatchService.broadcastBookingStatus(acceptedBooking, "Captain accepted! Driving to pickup location.");
+        Optional<Booking> opt = bookingRepository.findById(bookingId);
+        if (opt.isPresent()) {
+            Booking b = opt.get();
+            if (b.getStatus() == Booking.BookingStatus.SEARCHING || b.getStatus() == Booking.BookingStatus.REQUESTED) {
+                b.setDriverId(driverUserId);
+                b.setStatus(Booking.BookingStatus.ACCEPTED);
+                b.setUpdatedAt(Instant.now());
+                Booking acceptedBooking = bookingRepository.save(b);
+                log.info("Driver {} accepted booking {}", driverUserId, bookingId);
+                realtimeDispatchService.broadcastBookingStatus(acceptedBooking, "Captain accepted! Driving to pickup location.");
+            } else {
+                log.info("Driver {} could not accept booking {}: already accepted or cancelled", driverUserId, bookingId);
+            }
         }
 
         return "redirect:/driver/dashboard";

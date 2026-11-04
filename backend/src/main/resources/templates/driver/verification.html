@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver & Vehicle Verification - RideEase Captain</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/toury.css}">
+    <style>
+        .verification-card {
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+            background: #ffffff;
+        }
+        .upload-dropzone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .upload-dropzone:hover {
+            border-color: #3b82f6;
+            background: #f0f7ff;
+        }
+        .doc-preview-img {
+            max-height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark py-3">
+    <div class="container">
+        <a class="navbar-brand fw-bold" th:href="@{/driver/dashboard}">
+            <i class="bi bi-shield-check text-warning me-2"></i>RideEase Captain Portal
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <a th:href="@{/driver/dashboard}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+            <a th:href="@{/driver/logout}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width: 900px;">
+
+    <!-- Alerts -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="verification-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="fw-bold mb-1">Vehicle & Driver Compliance Verification</h4>
+                <p class="text-muted mb-0">Documents are securely stored on Cloudinary & reviewed by RideEase Safety Team</p>
+            </div>
+            <div>
+                <span th:if="${driver == null or driver.verificationStatus == null or driver.verificationStatus.name() == 'PENDING'}" class="badge bg-warning text-dark fs-6 px-3 py-2">
+                    <i class="bi bi-clock-history me-1"></i> Verification Pending
+                </span>
+                <span th:if="${driver != null and driver.verificationStatus != null and driver.verificationStatus.name() == 'APPROVED'}" class="badge bg-success fs-6 px-3 py-2">
+                    <i class="bi bi-patch-check-fill me-1"></i> Verified & Active
+                </span>
+                <span th:if="${driver != null and driver.verificationStatus != null and driver.verificationStatus.name() == 'REJECTED'}" class="badge bg-danger fs-6 px-3 py-2">
+                    <i class="bi bi-x-circle-fill me-1"></i> Verification Rejected
+                </span>
+            </div>
+        </div>
+
+        <div th:if="${driver != null and driver.verificationNotes != null}" class="alert alert-info mt-3 mb-0">
+            <strong>Administrator Status Note:</strong> <span th:text="${driver.verificationNotes}"></span>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form th:action="@{/driver/verification/submit}" method="POST" enctype="multipart/form-data" class="verification-card p-4">
+        
+        <!-- Driver Profile Section -->
+        <h5 class="fw-bold text-primary mb-3">
+            <i class="bi bi-person-badge me-2"></i>1. Driver Profile & License
+        </h5>
+        
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Driving License Number *</label>
+                <input type="text" name="licenseNumber" class="form-control" 
+                       th:value="${driver != null ? driver.licenseNumber : ''}" 
+                       placeholder="e.g. AP39 20200001234" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Driver Personal Photo (Cloudinary) *</label>
+                <input type="file" name="driverPhoto" class="form-control" accept="image/*">
+                <div th:if="${driver != null and driver.driverPhotoUrl != null}" class="mt-2">
+                    <img th:src="${driver.driverPhotoUrl}" alt="Driver Photo" class="doc-preview-img shadow-sm">
+                    <small class="d-block text-success mt-1"><i class="bi bi-cloud-check me-1"></i>Photo on Cloudinary</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Driver's License Photo / Scan</label>
+                <input type="file" name="licensePhoto" class="form-control" accept="image/*,application/pdf">
+                <div th:if="${driver != null and driver.licensePhotoUrl != null}" class="mt-2">
+                    <a th:href="${driver.licensePhotoUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-file-earmark-text me-1"></i> View License Document
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Vehicle Details Section -->
+        <h5 class="fw-bold text-primary mb-3">
+            <i class="bi bi-car-front me-2"></i>2. Vehicle Specifications
+        </h5>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Vehicle Category *</label>
+                <select name="vehicleCategory" class="form-select" required>
+                    <option value="MINI" th:selected="${vehicle != null and vehicle.category != null and vehicle.category.name() == 'MINI'}">Toury Mini (Hatchback)</option>
+                    <option value="SEDAN" th:selected="${vehicle != null and vehicle.category != null and vehicle.category.name() == 'SEDAN'}">Toury Sedan (Prime)</option>
+                    <option value="SUV" th:selected="${vehicle != null and vehicle.category != null and vehicle.category.name() == 'SUV'}">Toury SUV XL</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Vehicle Make *</label>
+                <input type="text" name="make" class="form-control" 
+                       th:value="${vehicle != null ? vehicle.make : ''}" 
+                       placeholder="e.g. Maruti Suzuki, Hyundai" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Vehicle Model *</label>
+                <input type="text" name="model" class="form-control" 
+                       th:value="${vehicle != null ? vehicle.model : ''}" 
+                       placeholder="e.g. Swift Dzire, WagonR" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Vehicle Color</label>
+                <input type="text" name="color" class="form-control" 
+                       th:value="${vehicle != null ? vehicle.color : ''}" 
+                       placeholder="e.g. White, Silver" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Manufacturing Year</label>
+                <input type="number" name="manufacturingYear" class="form-control" 
+                       th:value="${vehicle != null and vehicle.manufacturingYear != null ? vehicle.manufacturingYear : 2022}" 
+                       min="2010" max="2026" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Registration Number (Plate) *</label>
+                <input type="text" name="registrationNumber" class="form-control" 
+                       th:value="${vehicle != null ? vehicle.registrationNumber : ''}" 
+                       placeholder="e.g. AP 16 TC 4589" required>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Vehicle Verification Documents Section -->
+        <h5 class="fw-bold text-primary mb-3">
+            <i class="bi bi-file-earmark-check me-2"></i>3. Vehicle Verification Documents (Stored in Cloudinary)
+        </h5>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="upload-dropzone">
+                    <i class="bi bi-camera fs-2 text-primary"></i>
+                    <h6 class="fw-bold mt-2">Vehicle Front / Side Photo</h6>
+                    <input type="file" name="vehiclePhoto" class="form-control mt-2" accept="image/*">
+                    <div th:if="${vehicle != null and vehicle.vehiclePhotoUrl != null}" class="mt-2">
+                        <img th:src="${vehicle.vehiclePhotoUrl}" alt="Vehicle" class="doc-preview-img shadow-sm">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="upload-dropzone">
+                    <i class="bi bi-card-heading fs-2 text-primary"></i>
+                    <h6 class="fw-bold mt-2">RC Book (Registration Certificate)</h6>
+                    <input type="file" name="rcBook" class="form-control mt-2" accept="image/*,application/pdf">
+                    <div th:if="${vehicle != null and vehicle.rcBookUrl != null}" class="mt-2">
+                        <a th:href="${vehicle.rcBookUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> View Stored RC
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="upload-dropzone">
+                    <i class="bi bi-shield-shaded fs-2 text-primary"></i>
+                    <h6 class="fw-bold mt-2">Vehicle Insurance Policy</h6>
+                    <input type="file" name="insurancePolicy" class="form-control mt-2" accept="image/*,application/pdf">
+                    <div th:if="${vehicle != null and vehicle.insurancePolicyUrl != null}" class="mt-2">
+                        <a th:href="${vehicle.insurancePolicyUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> View Insurance Copy
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="upload-dropzone">
+                    <i class="bi bi-patch-check fs-2 text-primary"></i>
+                    <h6 class="fw-bold mt-2">Commercial Permit / Fitness Certificate</h6>
+                    <input type="file" name="fitnessCertificate" class="form-control mt-2" accept="image/*,application/pdf">
+                    <div th:if="${vehicle != null and vehicle.fitnessCertificateUrl != null}" class="mt-2">
+                        <a th:href="${vehicle.fitnessCertificateUrl}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i> View Permit
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                <i class="bi bi-cloud-arrow-up me-2"></i>Upload & Submit for Cloudinary Verification
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -84,9 +84,9 @@ public class DriverTelemetryWebSocketController {
 
             // Compute distance to pickup to trigger Arrival alert if driver is within 75 meters
             boolean isNearPickup = false;
-            if (booking.getStatus() == BookingStatus.ACCEPTED && booking.getPickupLocation() != null) {
-                double pLon = booking.getPickupLocation().getX();
-                double pLat = booking.getPickupLocation().getY();
+            if (booking.getStatus() == BookingStatus.ACCEPTED && booking.getPickupLatitude() != null && booking.getPickupLongitude() != null) {
+                double pLon = booking.getPickupLongitude();
+                double pLat = booking.getPickupLatitude();
                 double distanceMeters = calculateHaversineMeters(lat, lon, pLat, pLon);
 
                 if (distanceMeters <= 75.0) {

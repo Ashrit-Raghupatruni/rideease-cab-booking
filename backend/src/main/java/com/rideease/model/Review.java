@@ -1,26 +1,43 @@
 package com.rideease.model;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import jakarta.persistence.*;
 import java.time.Instant;
 
-@Document(collection = "reviews")
+@Entity
+@Table(name = "reviews", indexes = {
+    @Index(name = "idx_review_booking", columnList = "bookingId"),
+    @Index(name = "idx_review_driver", columnList = "driverId"),
+    @Index(name = "idx_review_passenger", columnList = "passengerId")
+})
 public class Review {
 
     @Id
+    @Column(length = 64)
     private String id;
 
+    @Column(length = 64)
     private String bookingId;
+
+    @Column(length = 64)
     private String passengerId;
+
+    @Column(length = 64)
     private String driverId;
 
     private int rating; // 1 to 5 stars
+
+    @Column(length = 1000)
     private String comment;
 
-    @CreatedDate
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
+        if (this.createdAt == null) this.createdAt = Instant.now();
+    }
 
     public Review() {}
 
@@ -31,7 +48,7 @@ public class Review {
         this.driverId = driverId;
         this.rating = rating;
         this.comment = comment;
-        this.createdAt = createdAt;
+        this.createdAt = createdAt != null ? createdAt : Instant.now();
     }
 
     public String getId() { return id; }

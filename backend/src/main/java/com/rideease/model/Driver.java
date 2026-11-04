@@ -1,31 +1,42 @@
 package com.rideease.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
-import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
-import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
 
-@Document(collection = "drivers")
+@Entity
+@Table(name = "drivers", indexes = {
+    @Index(name = "idx_driver_user_id", columnList = "userId", unique = true)
+})
 public class Driver {
 
     @Id
+    @Column(length = 64)
     private String id;
 
-    @Indexed(unique = true)
+    @Column(nullable = false, unique = true, length = 64)
     private String userId;
 
     private String licenseNumber;
     private String licensePhotoUrl;
 
+    // Driver personal profile photo (Cloudinary URL)
+    private String driverPhotoUrl;
+
+    // Verification documents (Cloudinary URLs)
+    private String rcDocumentUrl;
+    private String insuranceDocumentUrl;
+    private String permitDocumentUrl;
+
+    private String verificationNotes;
+
+    @Enumerated(EnumType.STRING)
     private VerificationStatus verificationStatus = VerificationStatus.PENDING;
+
     private boolean online = false;
     private boolean available = true;
 
-    // MongoDB 2dsphere index: stores [longitude, latitude]
-    @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
-    private GeoJsonPoint currentLocation;
+    // Coordinates: stored as latitude & longitude doubles for SQL
+    private Double currentLatitude;
+    private Double currentLongitude;
 
     private double rating = 5.0;
     private int totalTrips = 0;
@@ -34,7 +45,7 @@ public class Driver {
 
     public Driver(String id, String userId, String licenseNumber, String licensePhotoUrl,
                   VerificationStatus verificationStatus, boolean online, boolean available,
-                  GeoJsonPoint currentLocation, double rating, int totalTrips) {
+                  Double currentLatitude, Double currentLongitude, double rating, int totalTrips) {
         this.id = id;
         this.userId = userId;
         this.licenseNumber = licenseNumber;
@@ -42,7 +53,8 @@ public class Driver {
         this.verificationStatus = verificationStatus != null ? verificationStatus : VerificationStatus.PENDING;
         this.online = online;
         this.available = available;
-        this.currentLocation = currentLocation;
+        this.currentLatitude = currentLatitude;
+        this.currentLongitude = currentLongitude;
         this.rating = rating;
         this.totalTrips = totalTrips;
     }
@@ -59,6 +71,21 @@ public class Driver {
     public String getLicensePhotoUrl() { return licensePhotoUrl; }
     public void setLicensePhotoUrl(String licensePhotoUrl) { this.licensePhotoUrl = licensePhotoUrl; }
 
+    public String getDriverPhotoUrl() { return driverPhotoUrl; }
+    public void setDriverPhotoUrl(String driverPhotoUrl) { this.driverPhotoUrl = driverPhotoUrl; }
+
+    public String getRcDocumentUrl() { return rcDocumentUrl; }
+    public void setRcDocumentUrl(String rcDocumentUrl) { this.rcDocumentUrl = rcDocumentUrl; }
+
+    public String getInsuranceDocumentUrl() { return insuranceDocumentUrl; }
+    public void setInsuranceDocumentUrl(String insuranceDocumentUrl) { this.insuranceDocumentUrl = insuranceDocumentUrl; }
+
+    public String getPermitDocumentUrl() { return permitDocumentUrl; }
+    public void setPermitDocumentUrl(String permitDocumentUrl) { this.permitDocumentUrl = permitDocumentUrl; }
+
+    public String getVerificationNotes() { return verificationNotes; }
+    public void setVerificationNotes(String verificationNotes) { this.verificationNotes = verificationNotes; }
+
     public VerificationStatus getVerificationStatus() { return verificationStatus; }
     public void setVerificationStatus(VerificationStatus verificationStatus) { this.verificationStatus = verificationStatus; }
 
@@ -68,8 +95,27 @@ public class Driver {
     public boolean isAvailable() { return available; }
     public void setAvailable(boolean available) { this.available = available; }
 
-    public GeoJsonPoint getCurrentLocation() { return currentLocation; }
-    public void setCurrentLocation(GeoJsonPoint currentLocation) { this.currentLocation = currentLocation; }
+    public Double getCurrentLatitude() { return currentLatitude; }
+    public void setCurrentLatitude(Double currentLatitude) { this.currentLatitude = currentLatitude; }
+
+    public Double getCurrentLongitude() { return currentLongitude; }
+    public void setCurrentLongitude(Double currentLongitude) { this.currentLongitude = currentLongitude; }
+
+    /**
+     * Map representation for backward compatibility with telemetry/templates accessing:
+     * driver.currentLocation.coordinates[0] (lon) and coordinates[1] (lat)
+     */
+    public java.util.Map<String, Object> getCurrentLocation() {
+        if (currentLongitude == null || currentLatitude == null) return null;
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("coordinates", new Double[]{currentLongitude, currentLatitude});
+        return map;
+    }
+
+    public void setCurrentLocation(Double longitude, Double latitude) {
+        this.currentLongitude = longitude;
+        this.currentLatitude = latitude;
+    }
 
     public double getRating() { return rating; }
     public void setRating(double rating) { this.rating = rating; }
@@ -82,5 +128,12 @@ public class Driver {
         APPROVED,
         REJECTED,
         SUSPENDED
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
     }
 }

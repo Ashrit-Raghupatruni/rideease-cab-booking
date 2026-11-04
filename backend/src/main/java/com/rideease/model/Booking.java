@@ -1,30 +1,40 @@
 package com.rideease.model;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import jakarta.persistence.*;
 import java.time.Instant;
 
-@Document(collection = "bookings")
+@Entity
+@Table(name = "bookings", indexes = {
+    @Index(name = "idx_booking_passenger", columnList = "passengerId"),
+    @Index(name = "idx_booking_driver", columnList = "driverId"),
+    @Index(name = "idx_booking_status", columnList = "status")
+})
 public class Booking {
 
     @Id
+    @Column(length = 64)
     private String id;
 
+    @Column(length = 64)
     private String passengerId;
+
+    @Column(length = 64)
     private String driverId;
+
+    @Enumerated(EnumType.STRING)
     private Vehicle.VehicleCategory vehicleCategory;
 
     // Pickup details
+    @Column(length = 500)
     private String pickupAddress;
-    private GeoJsonPoint pickupLocation; // [lon, lat]
+    private Double pickupLatitude;
+    private Double pickupLongitude;
 
     // Dropoff details
+    @Column(length = 500)
     private String dropoffAddress;
-    private GeoJsonPoint dropoffLocation; // [lon, lat]
+    private Double dropoffLatitude;
+    private Double dropoffLongitude;
 
     private double distanceKm;
     private int estimatedDurationMinutes;
@@ -32,6 +42,7 @@ public class Booking {
     private double estimatedFare;
     private Double finalFare;
 
+    @Enumerated(EnumType.STRING)
     private BookingStatus status = BookingStatus.REQUESTED;
 
     private String otp; // Verification OTP for ride start
@@ -41,16 +52,31 @@ public class Booking {
     private boolean scheduled = false;
     private Instant scheduledTime;
 
+    @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;
+
+    @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
+
     private String paymentTransactionId;
     private Instant paidAt;
 
-    @CreatedDate
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
+    private Instant updatedAt = Instant.now();
 
-    @LastModifiedDate
-    private Instant updatedAt;
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
+        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.updatedAt == null) this.updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 
     public Booking() {}
 
@@ -69,14 +95,42 @@ public class Booking {
     public String getPickupAddress() { return pickupAddress; }
     public void setPickupAddress(String pickupAddress) { this.pickupAddress = pickupAddress; }
 
-    public GeoJsonPoint getPickupLocation() { return pickupLocation; }
-    public void setPickupLocation(GeoJsonPoint pickupLocation) { this.pickupLocation = pickupLocation; }
+    public Double getPickupLatitude() { return pickupLatitude; }
+    public void setPickupLatitude(Double pickupLatitude) { this.pickupLatitude = pickupLatitude; }
+
+    public Double getPickupLongitude() { return pickupLongitude; }
+    public void setPickupLongitude(Double pickupLongitude) { this.pickupLongitude = pickupLongitude; }
+
+    /**
+     * Map representation for backward compatibility with templates accessing:
+     * booking.pickupLocation.coordinates[0] (lon) and coordinates[1] (lat)
+     */
+    public java.util.Map<String, Object> getPickupLocation() {
+        if (pickupLongitude == null || pickupLatitude == null) return null;
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("coordinates", new Double[]{pickupLongitude, pickupLatitude});
+        return map;
+    }
 
     public String getDropoffAddress() { return dropoffAddress; }
     public void setDropoffAddress(String dropoffAddress) { this.dropoffAddress = dropoffAddress; }
 
-    public GeoJsonPoint getDropoffLocation() { return dropoffLocation; }
-    public void setDropoffLocation(GeoJsonPoint dropoffLocation) { this.dropoffLocation = dropoffLocation; }
+    public Double getDropoffLatitude() { return dropoffLatitude; }
+    public void setDropoffLatitude(Double dropoffLatitude) { this.dropoffLatitude = dropoffLatitude; }
+
+    public Double getDropoffLongitude() { return dropoffLongitude; }
+    public void setDropoffLongitude(Double dropoffLongitude) { this.dropoffLongitude = dropoffLongitude; }
+
+    /**
+     * Map representation for backward compatibility with templates accessing:
+     * booking.dropoffLocation.coordinates[0] (lon) and coordinates[1] (lat)
+     */
+    public java.util.Map<String, Object> getDropoffLocation() {
+        if (dropoffLongitude == null || dropoffLatitude == null) return null;
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("coordinates", new Double[]{dropoffLongitude, dropoffLatitude});
+        return map;
+    }
 
     public double getDistanceKm() { return distanceKm; }
     public void setDistanceKm(double distanceKm) { this.distanceKm = distanceKm; }
@@ -98,7 +152,7 @@ public class Booking {
     public void setFinalFare(Double finalFare) { this.finalFare = finalFare; }
 
     /**
-     * Convenient getter for templates: returns finalFare if settled, otherwise estimatedFare.
+     * Convenient getter alias for templates: trip.fare -> finalFare (if present) or estimatedFare
      */
     public double getFare() {
         return finalFare != null ? finalFare : estimatedFare;
@@ -142,22 +196,23 @@ public class Booking {
         SEARCHING,
         ACCEPTED,
         ARRIVING,
+        ARRIVED,
         IN_PROGRESS,
         COMPLETED,
-        CANCELLED,
-        NO_DRIVER_FOUND
+        CANCELLED
     }
 
     public enum PaymentStatus {
         PENDING,
         PAID,
-        FAILED
+        FAILED,
+        REFUNDED
     }
 
     public enum PaymentMethod {
         CASH,
-        ONLINE,
         WALLET,
-        UPI
+        UPI,
+        CARD
     }
 }
