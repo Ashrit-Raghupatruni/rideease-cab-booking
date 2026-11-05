@@ -116,6 +116,7 @@ public class AuthViewController {
             User driverUser = userOpt.get();
             session.setAttribute("DRIVER_USER_ID", driverUser.getId());
             session.setAttribute("DRIVER_NAME", driverUser.getName());
+            session.setAttribute("DRIVER_EMAIL", driverUser.getEmail());
             return "redirect:/driver/dashboard";
         }
         model.addAttribute("error", "Invalid driver credentials. Ensure you have registered as Driver.");
@@ -157,6 +158,7 @@ public class AuthViewController {
 
         session.setAttribute("DRIVER_USER_ID", newDriverUser.getId());
         session.setAttribute("DRIVER_NAME", newDriverUser.getName());
+        session.setAttribute("DRIVER_EMAIL", newDriverUser.getEmail());
         return "redirect:/driver/dashboard";
     }
 

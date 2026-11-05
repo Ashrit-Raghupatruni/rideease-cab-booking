@@ -260,6 +260,8 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         let activeTrip = /*[[${activeTrip}]]*/ null;
+        let driverEmail = /*[[${driverEmail}]]*/ '';
+        let driverUserId = /*[[${session.DRIVER_USER_ID}]]*/ '';
 
         let pickupPos = [16.4445, 80.5085];
         let dropPos = [16.5175, 80.6200];
@@ -271,7 +273,8 @@
             activeStatus = activeTrip.status;
         }
 
-        const driverPos = [pickupPos[0] - 0.009, pickupPos[1] - 0.007];
+        let driverPos = [pickupPos[0] - 0.009, pickupPos[1] - 0.007];
+        let driverMarker = null;
 
         const map = L.map('driver-map', { zoomControl: false }).setView(pickupPos, 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -300,40 +303,87 @@
             iconSize: [28, 28]
         });
 
-        if (activeStatus === 'IN_PROGRESS') {
-            L.marker(pickupPos, {icon: pIcon}).addTo(map).bindPopup("<b>Pickup Point</b>");
-            L.marker(dropPos, {icon: dIcon}).addTo(map).bindPopup("<b>Destination Dropoff</b>");
+        // 1. DUAL-LEG ROUTE RENDERING (Driver -> Pickup -> Dropoff)
+        let leg1RouteLayer = null;
+        let leg2RouteLayer = null;
 
-            fetch(`/api/geo/route?pLat=${pickupPos[0]}&pLon=${pickupPos[1]}&dLat=${dropPos[0]}&dLon=${dropPos[1]}`)
-                .then(res => res.json())
+        function renderDualLegRoutes() {
+            // Leg 1: Driver -> Pickup (Dashed Amber line)
+            fetch(`/api/geo/route?pLat=${driverPos[0]}&pLon=${driverPos[1]}&dLat=${pickupPos[0]}&dLon=${pickupPos[1]}`)
+                .then(r => r.json())
                 .then(data => {
                     if (data.status === 'SUCCESS' && data.geometry) {
-                        const route = L.geoJSON(data.geometry, {
-                            style: { color: '#4f46e5', weight: 6, opacity: 0.9, lineJoin: 'round' }
+                        if (leg1RouteLayer) map.removeLayer(leg1RouteLayer);
+                        leg1RouteLayer = L.geoJSON(data.geometry, {
+                            style: { color: '#f59e0b', weight: 6, opacity: 0.9, dashArray: '8, 8' }
                         }).addTo(map);
-                        map.fitBounds(route.getBounds(), { padding: [80, 80] });
-
-                        if (data.geometry.coordinates && data.geometry.coordinates.length > 0) {
-                            const midCoord = data.geometry.coordinates[Math.floor(data.geometry.coordinates.length / 2)];
-                            L.marker([midCoord[1], midCoord[0]], {icon: driverIcon}).addTo(map).bindPopup("<b>Your Cab Position</b>");
+                        if (!activeTrip || activeStatus !== 'IN_PROGRESS') {
+                            map.fitBounds(leg1RouteLayer.getBounds(), { padding: [80, 80] });
                         }
                     }
                 });
-        } else {
-            L.marker(driverPos, {icon: driverIcon}).addTo(map).bindPopup("<b>Your Position</b>");
-            L.marker(pickupPos, {icon: pIcon}).addTo(map).bindPopup("<b>Passenger Pickup</b>");
 
-            fetch(`/api/geo/route?pLat=${driverPos[0]}&pLon=${driverPos[1]}&dLat=${pickupPos[0]}&dLon=${pickupPos[1]}`)
-                .then(res => res.json())
+            // Leg 2: Pickup -> Dropoff (Solid Indigo/Blue line)
+            fetch(`/api/geo/route?pLat=${pickupPos[0]}&pLon=${pickupPos[1]}&dLat=${dropPos[0]}&dLon=${dropPos[1]}`)
+                .then(r => r.json())
                 .then(data => {
                     if (data.status === 'SUCCESS' && data.geometry) {
-                        const routeToPickup = L.geoJSON(data.geometry, {
-                            style: { color: '#f59e0b', weight: 6, opacity: 0.9, lineJoin: 'round' }
+                        if (leg2RouteLayer) map.removeLayer(leg2RouteLayer);
+                        leg2RouteLayer = L.geoJSON(data.geometry, {
+                            style: { color: '#4f46e5', weight: 6, opacity: 0.9, lineJoin: 'round' }
                         }).addTo(map);
-                        map.fitBounds(routeToPickup.getBounds(), { padding: [80, 80] });
+                        if (activeTrip && activeStatus === 'IN_PROGRESS') {
+                            map.fitBounds(leg2RouteLayer.getBounds(), { padding: [80, 80] });
+                        }
                     }
                 });
+
+            // Place key waypoint pins
+            L.marker(pickupPos, {icon: pIcon}).addTo(map).bindPopup("<b>Passenger Pickup</b>");
+            L.marker(dropPos, {icon: dIcon}).addTo(map).bindPopup("<b>Trip Destination</b>");
+            if (!driverMarker) {
+                driverMarker = L.marker(driverPos, {icon: driverIcon}).addTo(map).bindPopup("<b>Your Vehicle Location</b>");
+            } else {
+                driverMarker.setLatLng(driverPos);
+            }
         }
+
+        renderDualLegRoutes();
+
+        // 2. DEVICE GEOLOCATION PERMISSION & ACCURACY FOR DRIVER
+        function requestDriverDeviceLocation() {
+            if (!navigator.geolocation) {
+                console.warn("Geolocation not supported by driver browser.");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    driverPos = [lat, lon];
+                    if (driverMarker) driverMarker.setLatLng([lat, lon]);
+
+                    // Sync to backend DB for nearby matching
+                    if (driverUserId) {
+                        const fd = new FormData();
+                        fd.append('driverId', driverUserId);
+                        fd.append('lat', lat);
+                        fd.append('lon', lon);
+                        fetch('/api/driver/location', { method: 'POST', body: fd }).catch(() => {});
+                    }
+                    renderDualLegRoutes();
+                },
+                (err) => {
+                    console.warn("Driver location permission denied or timed out:", err.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            requestDriverDeviceLocation();
+        });
 
         // Countdown timer animation for incoming request
         let seconds = 15;
@@ -397,30 +447,78 @@
             }
         }
 
-        // Sends real-time GPS telemetry every 3 seconds during active trip
+        // Sends real-time GPS telemetry during active trip
+        // For driver@gmail.com: updates automatically towards user every 2 seconds
+        // For all other drivers: streams continuous accurate device GPS via watchPosition
+        let driverGpsWatchId = null;
+
         function startDriverGpsTelemetry(tripId) {
             if (driverTelemetryInterval) clearInterval(driverTelemetryInterval);
+            if (driverGpsWatchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(driverGpsWatchId);
+                driverGpsWatchId = null;
+            }
 
-            let step = 0;
-            driverTelemetryInterval = setInterval(() => {
-                if (!driverStompClient || !driverStompClient.connected) return;
+            const isTargetSimulatedDriver = (driverEmail && driverEmail.toLowerCase().trim() === 'driver@gmail.com');
 
-                // Move slightly towards destination
-                step += 0.0003;
-                const curLat = driverPos[0] + step;
-                const curLon = driverPos[1] + step;
+            if (isTargetSimulatedDriver) {
+                console.log("[Driver Telemetry] Target email driver@gmail.com detected: streaming 2-second trajectory updates towards user");
+                let step = 0;
+                driverTelemetryInterval = setInterval(() => {
+                    if (!driverStompClient || !driverStompClient.connected) return;
 
-                const payload = {
-                    bookingId: tripId,
-                    lat: curLat,
-                    lon: curLon,
-                    heading: 45.0,
-                    speed: 38.5,
-                    timestamp: new Date().toISOString()
-                };
+                    // Interpolate step towards pickup point or dropoff point
+                    step += 0.0004;
+                    let targetLat = (activeStatus === 'IN_PROGRESS') ? dropPos[0] : pickupPos[0];
+                    let targetLon = (activeStatus === 'IN_PROGRESS') ? dropPos[1] : pickupPos[1];
 
-                driverStompClient.send('/app/driver/telemetry', {}, JSON.stringify(payload));
-            }, 3000);
+                    let curLat = driverPos[0] + (targetLat - driverPos[0]) * Math.min(step, 1.0);
+                    let curLon = driverPos[1] + (targetLon - driverPos[1]) * Math.min(step, 1.0);
+
+                    if (driverMarker) driverMarker.setLatLng([curLat, curLon]);
+
+                    const payload = {
+                        bookingId: tripId,
+                        driverId: driverUserId,
+                        lat: curLat,
+                        lon: curLon,
+                        heading: 45.0,
+                        speed: 38.5,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    driverStompClient.send('/app/driver/telemetry', {}, JSON.stringify(payload));
+                }, 2000); // Exactly every 2 seconds as requested
+
+            } else {
+                console.log("[Driver Telemetry] Standard driver detected: streaming real device GPS via watchPosition");
+                if (navigator.geolocation) {
+                    driverGpsWatchId = navigator.geolocation.watchPosition(
+                        (pos) => {
+                            if (!driverStompClient || !driverStompClient.connected) return;
+                            const lat = pos.coords.latitude;
+                            const lon = pos.coords.longitude;
+                            const heading = pos.coords.heading || 0.0;
+                            const speed = (pos.coords.speed || 0.0) * 3.6; // convert m/s to km/h
+
+                            if (driverMarker) driverMarker.setLatLng([lat, lon]);
+
+                            const payload = {
+                                bookingId: tripId,
+                                driverId: driverUserId,
+                                lat: lat,
+                                lon: lon,
+                                heading: heading,
+                                speed: speed,
+                                timestamp: new Date().toISOString()
+                            };
+                            driverStompClient.send('/app/driver/telemetry', {}, JSON.stringify(payload));
+                        },
+                        (err) => console.warn("Driver watchPosition error:", err.message),
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    );
+                }
+            }
         }
 
         initDriverWebSocket();

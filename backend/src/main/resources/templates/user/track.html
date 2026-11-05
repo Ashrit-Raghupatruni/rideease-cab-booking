@@ -265,24 +265,42 @@
         L.marker([dLat, dLon], {icon: dropIcon}).addTo(map).bindPopup("<b>Destination:</b> " + /*[[${booking.dropoffAddress}]]*/ 'Dropoff');
 
         let dynamicCarMarker = null;
+        let leg1RouteLayer = null;
+        let leg2RouteLayer = null;
 
-        // Fetch authoritative OSRM road geometry
+        // 1. DUAL-LEG TRAJECTORY (Leg 1: Captain -> Pickup, Leg 2: Pickup -> Destination)
+        // Fetch Leg 2 (Booked trip route: Pickup -> Dropoff)
         fetch(`/api/geo/route?pLat=${pLat}&pLon=${pLon}&dLat=${dLat}&dLon=${dLon}`)
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'SUCCESS' && data.geometry) {
-                    const fullRoute = L.geoJSON(data.geometry, {
+                    leg2RouteLayer = L.geoJSON(data.geometry, {
                         style: { color: '#4f46e5', weight: 6, opacity: 0.9, lineJoin: 'round', lineCap: 'round' }
                     }).addTo(map);
-                    map.fitBounds(fullRoute.getBounds(), { padding: [80, 80] });
+                    map.fitBounds(leg2RouteLayer.getBounds(), { padding: [80, 80] });
 
-                    // Initial driver placement
+                    // Initial driver placement at pickup point or approaching
                     dynamicCarMarker = L.marker([pLat, pLon], {icon: carIcon}).addTo(map).bindPopup("<b>Captain Assigned</b>");
                 }
             })
             .catch(e => {
                 console.error("OSRM Road routing error:", e);
             });
+
+        function updateApproachingRoute(driverLat, driverLon) {
+            // Render Leg 1 (Dashed Amber trajectory from Captain to Passenger Pickup)
+            fetch(`/api/geo/route?pLat=${driverLat}&pLon=${driverLon}&dLat=${pLat}&dLon=${pLon}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'SUCCESS' && data.geometry) {
+                        if (leg1RouteLayer) map.removeLayer(leg1RouteLayer);
+                        leg1RouteLayer = L.geoJSON(data.geometry, {
+                            style: { color: '#f59e0b', weight: 6, opacity: 0.9, dashArray: '8, 8' }
+                        }).addTo(map);
+                    }
+                })
+                .catch(() => {});
+        }
 
         // WebSocket STOMP for live driver telemetry & event-driven status transitions
         let stompClient = null;
@@ -308,6 +326,11 @@
                                 }
                             } else {
                                 dynamicCarMarker = L.marker([telemetry.lat, telemetry.lon], {icon: carIcon}).addTo(map);
+                            }
+
+                            // Update approaching route trajectory if trip is not yet in progress
+                            if (bookingStatus !== 'IN_PROGRESS') {
+                                updateApproachingRoute(telemetry.lat, telemetry.lon);
                             }
 
                             // Dynamic ETA calculation if available

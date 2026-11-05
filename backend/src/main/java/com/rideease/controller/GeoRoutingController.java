@@ -2,6 +2,13 @@ package com.rideease.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rideease.model.Driver;
+import com.rideease.model.User;
+import com.rideease.model.Vehicle;
+import com.rideease.repository.DriverRepository;
+import com.rideease.repository.UserRepository;
+import com.rideease.repository.VehicleRepository;
+import com.rideease.service.DriverMatchingService;
 import com.rideease.service.RoadRoutingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -9,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
@@ -25,6 +33,88 @@ public class GeoRoutingController {
 
     @Autowired
     private RoadRoutingService roadRoutingService;
+
+    @Autowired
+    private DriverRepository driverRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private VehicleRepository vehicleRepository;
+
+    /**
+     * Driver updates their current high-accuracy device location
+     */
+    @PostMapping("/api/driver/location")
+    public Map<String, Object> updateDriverLocation(
+            @RequestParam("driverId") String driverId,
+            @RequestParam("lat") double lat,
+            @RequestParam("lon") double lon
+    ) {
+        Map<String, Object> resp = new HashMap<>();
+        Optional<Driver> opt = driverRepository.findById(driverId);
+        if (opt.isEmpty()) {
+            opt = driverRepository.findByUserId(driverId);
+        }
+
+        if (opt.isPresent()) {
+            Driver d = opt.get();
+            d.setCurrentLatitude(lat);
+            d.setCurrentLongitude(lon);
+            driverRepository.save(d);
+            resp.put("status", "SUCCESS");
+            resp.put("message", "Driver location updated");
+        } else {
+            resp.put("status", "NOT_FOUND");
+        }
+        return resp;
+    }
+
+    /**
+     * Returns count and positions of nearby verified & online drivers for User pickup
+     */
+    @GetMapping("/api/drivers/nearby")
+    public Map<String, Object> getNearbyDrivers(
+            @RequestParam("lat") double lat,
+            @RequestParam("lon") double lon,
+            @RequestParam(value = "radiusKm", defaultValue = "10.0") double radiusKm
+    ) {
+        Map<String, Object> resp = new HashMap<>();
+        List<Driver> activeDrivers = driverRepository.findActiveOnlineDrivers(Driver.VerificationStatus.APPROVED);
+        List<Map<String, Object>> nearbyList = new ArrayList<>();
+
+        for (Driver d : activeDrivers) {
+            if (d.getCurrentLatitude() == null || d.getCurrentLongitude() == null) continue;
+            double dist = DriverMatchingService.calculateHaversineDistanceKm(lat, lon, d.getCurrentLatitude(), d.getCurrentLongitude());
+            if (dist <= radiusKm) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("driverId", d.getId());
+                item.put("lat", d.getCurrentLatitude());
+                item.put("lon", d.getCurrentLongitude());
+                item.put("rating", d.getRating());
+                item.put("distanceKm", Math.round(dist * 100.0) / 100.0);
+
+                userRepository.findById(d.getUserId()).ifPresent(u -> {
+                    item.put("driverName", u.getName());
+                    item.put("driverEmail", u.getEmail());
+                });
+
+                vehicleRepository.findByDriverId(d.getId()).ifPresent(v -> {
+                    item.put("category", v.getCategory() != null ? v.getCategory().name() : "SEDAN");
+                    item.put("vehicleModel", v.getModel());
+                    item.put("plate", v.getRegistrationNumber());
+                });
+
+                nearbyList.add(item);
+            }
+        }
+
+        resp.put("status", "SUCCESS");
+        resp.put("count", nearbyList.size());
+        resp.put("drivers", nearbyList);
+        return resp;
+    }
 
     /**
      * Address Autocomplete Suggestions

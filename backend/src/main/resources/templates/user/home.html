@@ -87,9 +87,11 @@
             </button>
         </div>
 
-        <!-- Accuracy indicator banner -->
-        <div id="accuracyBadge" class="position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-1 bg-white rounded-pill shadow-sm border small fw-semibold text-secondary d-none" style="z-index: 999;">
-            <i class="bi bi-reception-4 text-success me-1"></i> GPS Connected (<span id="accMeters">high accuracy</span>)
+        <!-- Accuracy indicator & Nearby Drivers badge -->
+        <div id="accuracyBadge" class="position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-1 bg-white rounded-pill shadow-sm border small fw-semibold text-secondary d-none d-flex align-items-center gap-2" style="z-index: 999;">
+            <span><i class="bi bi-reception-4 text-success me-1"></i><span id="accMeters">high accuracy</span></span>
+            <span class="text-muted">|</span>
+            <span id="nearbyDriversCountBadge" class="text-primary"><i class="bi bi-car-front-fill me-1"></i>Checking nearby captains...</span>
         </div>
 
         <!-- 3. Floating Bottom Sheet: Booking & Route Search Panel -->
@@ -345,14 +347,50 @@
                         .bindPopup("<b>Your Current Location</b> (±" + acc + "m)").openPopup();
 
                     map.setView([lat, lon], 14);
+                    fetchNearbyDrivers(lat, lon);
                     calculateAndRenderRoadRoute();
                 },
                 (err) => {
                     btn.innerHTML = '<i class="bi bi-crosshair"></i>';
-                    alert("Unable to retrieve location: " + err.message);
+                    alert("Location access needed: " + err.message + "\nPlease enable device GPS permission to accurately find nearby captains.");
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
+        }
+
+        let nearbyDriverMarkers = [];
+
+        function fetchNearbyDrivers(lat, lon) {
+            fetch(`/api/drivers/nearby?lat=${lat}&lon=${lon}&radiusKm=12.0`)
+                .then(res => res.json())
+                .then(data => {
+                    const badge = document.getElementById('nearbyDriversCountBadge');
+                    if (data && data.status === 'SUCCESS') {
+                        const count = data.count || 0;
+                        badge.innerHTML = `<i class="bi bi-car-front-fill text-success me-1"></i><b>${count}</b> Captains nearby`;
+
+                        // Clear prior driver markers
+                        nearbyDriverMarkers.forEach(m => map.removeLayer(m));
+                        nearbyDriverMarkers = [];
+
+                        if (data.drivers && data.drivers.length > 0) {
+                            data.drivers.forEach(d => {
+                                const carIcon = L.divIcon({
+                                    className: 'toury-car-pin',
+                                    html: `<div style="background:#1e293b; color:#38bdf8; padding:5px 8px; border-radius:12px; font-size:11px; font-weight:bold; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:1px solid #38bdf8;">
+                                             <i class="bi bi-car-front-fill me-1"></i>${d.category || 'CAB'}
+                                           </div>`,
+                                    iconSize: [60, 24],
+                                    iconAnchor: [30, 12]
+                                });
+                                const marker = L.marker([d.lat, d.lon], { icon: carIcon }).addTo(map)
+                                    .bindPopup(`<b>${d.driverName || 'Captain'}</b><br>${d.vehicleModel || ''} (${d.plate || ''})<br>★ ${d.rating || 5.0} • ${d.distanceKm} km away`);
+                                nearbyDriverMarkers.push(marker);
+                            });
+                        }
+                    }
+                })
+                .catch(err => console.error("Error fetching nearby drivers:", err));
         }
 
         function fitRouteBounds() {
@@ -499,6 +537,11 @@
                     submitBtn.disabled = true;
                 });
         }
+
+        // Automatically prompt for device geolocation on initial page load with high accuracy
+        window.addEventListener('DOMContentLoaded', () => {
+            getUserLocation();
+        });
 
         document.addEventListener('click', function(e) {
             if (!e.target.closest('#pickupInput') && !e.target.closest('#pickupResults')) {
