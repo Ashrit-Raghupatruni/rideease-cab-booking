@@ -1,20 +1,21 @@
 version: '3.8'
 
 services:
-  # Local MongoDB 7.0 Service (with health checks and initial collection indexes)
-  mongodb:
-    image: mongo:7.0
-    container_name: rideease-mongodb
+  # MySQL 8.0 Relational Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: rideease-mysql
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "3306:3306"
     environment:
-      MONGO_INITDB_DATABASE: rideease_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: rideease_db
     volumes:
-      - mongo-data:/data/db
-      - ./database/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - mysql-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-root}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,17 +32,19 @@ services:
       - "8081:8081"
       - "8082:8082"
     environment:
-      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:-mongodb://mongodb:27017/rideease_db}
-      JWT_SECRET: ${JWT_SECRET:-A_VERY_SECURE_RIDE_EASE_DEFAULT_DEVELOPMENT_SECRET_KEY_32_CHARS!}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/rideease_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-root}
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       JWT_EXPIRATION_MS: 86400000
       PORT: 8080
       DRIVER_PORT: 8081
       ADMIN_PORT: 8082
       ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-admin@rideease.com}
-      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-AdminSecure2026!}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-admin123}
     depends_on:
-      mongodb:
+      mysql:
         condition: service_healthy
 
 volumes:
-  mongo-data:
+  mysql-data:
