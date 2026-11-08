@@ -38,7 +38,7 @@ Urban and campus commuters face unreliable cab dispatching, unpredictable pricin
 | **FR-01** | Authentication | JWT-based registration, login, and session validation for Passenger, Driver, and Admin roles | P0 (Must) |
 | **FR-02** | KYC Onboarding | Driver registration with license upload to Cloudinary CDN; admin review workflow (PENDING -> APPROVED/REJECTED) | P0 (Must) |
 | **FR-03** | Fare Estimation | Server-side calculation based on distance, duration, vehicle tier (Mini, Sedan, SUV), and surge factor | P0 (Must) |
-| **FR-04** | Driver Matching | MongoDB `2dsphere` proximity query finding online, available, approved drivers within an 8 km radius | P0 (Must) |
+| **FR-04** | Driver Matching | MySQL spherical Haversine proximity query finding online, available, approved drivers within an 8 km radius | P0 (Must) |
 | **FR-05** | Booking Lifecycle | State machine: `REQUESTED` -> `SEARCHING` -> `ACCEPTED` -> `ARRIVING` -> `IN_PROGRESS` -> `COMPLETED` / `CANCELLED` | P0 (Must) |
 | **FR-06** | Real-Time Sync | Spring WebSocket (STOMP) broadcasting live driver GPS coordinates and trip state transitions | P1 (High) |
 | **FR-07** | Ride Start OTP | 4-digit verification code generated on match, verified by driver before setting state to `IN_PROGRESS` | P1 (High) |
@@ -51,7 +51,7 @@ Urban and campus commuters face unreliable cab dispatching, unpredictable pricin
 ## 5. Non-Functional Requirements
 
 - **Performance:** Fare estimate API response time < 200 ms; driver matching dispatch < 1.5 seconds.
-- **Scalability:** Stateless Spring Boot backend supporting horizontal scaling; MongoDB 2dsphere indexing for high-concurrency spatial queries.
+- **Scalability:** Stateless Spring Boot backend supporting horizontal scaling; MySQL relational indexing indexing for high-concurrency spatial queries.
 - **Availability:** 99.9% uptime target; graceful degradation if external map services experience latency.
 - **Security:**
   - Passwords hashed using BCrypt.

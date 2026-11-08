@@ -9,8 +9,8 @@ This document establishes coding conventions, state machine invariants, security
 1. **Layered Separation of Concerns:**
    - **Controllers:** Handle HTTP parsing, DTO validation (`@Valid`), and HTTP response wrapping (`ResponseEntity`). No database queries or pricing calculations in controllers.
    - **Services:** Encapsulate all business logic, transactions, state validation, and pricing formulas.
-   - **Repositories:** Strictly data access interfaces extending `MongoRepository`. Custom geospatial queries must use Spring Data's `Point` and `Distance`.
-   - **Models:** MongoDB entity documents annotated with `@Document`, `@Id`, and `@Indexed`.
+   - **Repositories:** Strictly data access interfaces extending `JpaRepository`. Custom geospatial queries must use Spring Data's `Point` and `Distance`.
+   - **Models:** JPA relational entities annotated with `@Entity`, `@Table`, and `@Id`.
 
 2. **No Plain Secrets:**
    - Never commit API keys, database credentials, or JWT signing keys to version control.
@@ -75,7 +75,7 @@ To avoid double-booking, ghost rides, or invalid trip progress, the following st
    - Every trip update (`accept`, `start`, `complete`, `cancel`) must verify that the requesting user's JWT ID matches either the passenger or assigned driver ID on the booking record.
 
 3. **Password Security:**
-   - Always hash passwords using `BCryptPasswordEncoder` with a strength factor of at least 10 before saving to MongoDB. Plaintext passwords must never hit the database.
+   - Always hash passwords using `BCryptPasswordEncoder` with a strength factor of at least 10 before saving to the database. Plaintext passwords must never hit the database.
 
 ---
 

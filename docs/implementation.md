@@ -8,8 +8,8 @@ This document outlines the engineering implementation phases, milestones, techni
 
 ```
 Phase 1: Foundation & Infrastructure (Completed)
-├── Spring Boot 3 Scaffolding & Dependencies (Security, Web, Mongo, WS)
-├── MongoDB Atlas Connection & 2dsphere Geospatial Indexing
+├── Spring Boot 3 Scaffolding & Dependencies (Security, Web, MySQL JPA, WS)
+├── MySQL Database Connection & Haversine Distance Engine
 ├── Cloudinary Java SDK 2.x & Dotenv Integration
 └── React & Android Project Layouts
 
@@ -82,7 +82,7 @@ Phase 6: Frontend Dashboards & Android Client
 ### 3.1. Backend Execution
 ```bash
 cd backend
-# Verify .env credentials (MongoDB Atlas, Cloudinary)
+# Verify .env credentials (MySQL Database, Cloudinary)
 mvn clean spring-boot:run
 ```
 The REST API will boot on `http://localhost:8080`.
@@ -97,14 +97,14 @@ The React development server runs on `http://localhost:5173`.
 
 ### 3.3. Database Indexing
 ```bash
-mongosh "$SPRING_DATA_MONGODB_URI" database/init-mongo.js
+mysql -u root -p rideease_db < database/schema.sql
 ```
 
 ---
 
 ## 4. Verification & Testing Checklist
 
-- [x] MongoDB Atlas connection verified via credentials in `.env` and `application.properties`.
+- [x] MySQL Database connection verified via credentials in `.env` and `application.properties`.
 - [x] Cloudinary SDK 2.x and `dotenv-java` verified via `CloudinaryTestRunner.java`.
 - [ ] Authentication integration test: Register rider, driver, and admin accounts.
 - [ ] Geospatial query test: Seed mock driver coordinates in Bangalore/Delhi and confirm `$near` returns results.

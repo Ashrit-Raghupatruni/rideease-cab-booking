@@ -12,7 +12,7 @@ sequenceDiagram
     actor Passenger as Passenger (Port 8080)
     participant UserPort as Web Server :8080
     participant Backend as Spring Boot Core
-    participant DB as MongoDB Atlas
+    participant DB as MySQL 8.0
     participant DriverPort as Driver Server :8081
     actor Driver as Driver Captain (Port 8081)
     participant AdminPort as Admin Server :8082
@@ -69,7 +69,7 @@ flowchart TD
     C -->|Log Out| E[POST /auth/logout -> Session Invalidated -> Redirect to Login]
     C -->|Delete Account| F[Confirm Prompt in Browser]
     F -->|Confirmed| G[POST /account/delete]
-    G --> H[(MongoDB: userRepository.deleteById)]
+    G --> H[(MySQL: userRepository.deleteById)]
     H --> I[Session Invalidated & Redirect with deleted=true message]
 ```
 

@@ -113,7 +113,7 @@ To build the frontend **using only Java**, we utilize **Java Swing / JavaFX mode
 1. **Java Spring Boot + Thymeleaf Engine (Web Frontend):**
    - 100% Java-rendered frontend using Spring Boot Controllers returning Thymeleaf HTML5 templates styled with the exact purple/emerald design system tokens.
    - Clean, lightweight, responsive browser-accessible UI without needing Node.js or npm.
-   - Direct integration with Spring Security, WebSocket STOMP, MongoDB, and Cloudinary.
+   - Direct integration with Spring Security, WebSocket STOMP, MySQL 8.0 with Spring Data JPA, and Cloudinary.
 
 2. **Java Android Client:**
    - 100% Java Android App using native Java Views, Activities, and Fragments mirroring the User & Driver screens.

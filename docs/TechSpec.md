@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Runtime | Java OpenJDK | 17 LTS / 21 LTS | High-performance multi-port server |
 | Framework | Spring Boot | 3.2.5 | Multi-connector Tomcat (Ports 8080, 8081, 8082) |
-| Database | MongoDB Atlas | 7.x Cluster | GeoJSON 2dsphere proximity & document storage |
+| Database | MySQL 8.0 | Relational Engine | Spring Data JPA, Haversine spherical distance |
 | CDN / Media | Cloudinary Java SDK | 2.0.0 (HTTP5) | KYC document storage, transforms, auto-format |
 | Maps & Routing | Mappls (MapmyIndia) | REST API | Distance matrix, routes, Indian road network calibration |
 | WebSockets | Spring WebSocket + STOMP | 3.2.5 | Real-time bidirectional message broker |
@@ -47,12 +47,12 @@ Calculates distance and duration using Mappls (MapmyIndia) engine.
 ### 3.2. Diagnostics & Health Controller (`/api/health`)
 
 #### `GET /api/health/db`
-Performs live read and write tests directly against MongoDB Atlas Cluster0.
+Performs live read and write tests directly against MySQL 8.0 Cluster0.
 - **Response (200 OK):**
   ```json
   {
     "status": "UP",
-    "database": "MongoDB Atlas Cluster0",
+    "database": "MySQL 8.0 Cluster0",
     "databaseName": "rideease_db",
     "writeTest": "SUCCESS (112 ms)",
     "readTest": "SUCCESS (84 ms)",
@@ -73,6 +73,6 @@ MAPPLS_CLIENT_SECRET=
 # Cloudinary
 CLOUDINARY_URL=cloudinary://<api_key>:<api_secret>@<cloud_name>
 
-# MongoDB Atlas
-SPRING_DATA_MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/rideease_db?retryWrites=true&w=majority&appName=Cluster0
+# MySQL 8.0
+SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/rideease_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
 ```
