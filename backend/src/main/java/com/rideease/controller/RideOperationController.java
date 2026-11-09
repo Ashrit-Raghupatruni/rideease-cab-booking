@@ -184,7 +184,7 @@ public class RideOperationController {
             return "redirect:/driver/dashboard?error=unauthorized";
         }
 
-        if (booking.getStatus() != Booking.BookingStatus.ACCEPTED) {
+        if (booking.getStatus() != Booking.BookingStatus.ACCEPTED && booking.getStatus() != Booking.BookingStatus.ARRIVING) {
             log.warn("Invalid state for starting booking {}: {}", bookingId, booking.getStatus());
             return "redirect:/driver/dashboard?error=invalid_status";
         }

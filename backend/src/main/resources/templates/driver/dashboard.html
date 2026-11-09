@@ -133,7 +133,7 @@
         <!-- 1. Fullscreen Nav & Telemetry Map -->
         <div id="driver-map"></div>
 
-        <!-- 2. Floating Top KPI Bar -->
+        <!-- 2. Floating Top KPI Bar & Navigation HUD Strip -->
         <div class="driver-top-kpi-bar">
             <div class="kpi-chip">
                 <i class="bi bi-currency-rupee text-success fs-5"></i>
@@ -155,6 +155,33 @@
                     <div class="text-muted" style="font-size: 0.7rem; font-weight: 600;">RATING</div>
                     <div class="fw-bold text-dark fs-6" th:text="${driverRating != null ? driverRating + ' ★' : '5.00 ★'}">5.00 ★</div>
                 </div>
+            </div>
+
+            <!-- Real-Time Turn-by-Turn Navigation Instruction Header for Active Ride -->
+            <div th:if="${activeTrip != null}" class="kpi-chip border-primary shadow-sm" id="driverNavBanner">
+                <i class="bi bi-geo-alt-fill text-primary fs-4" id="driverNavIcon"></i>
+                <div>
+                    <div class="text-primary fw-bold" style="font-size: 0.75rem;" id="driverNavStage">
+                        <span th:if="${activeTrip.status.name() == 'ACCEPTED'}">NAVIGATING TO PICKUP</span>
+                        <span th:if="${activeTrip.status.name() == 'ARRIVING'}">ARRIVED AT PICKUP</span>
+                        <span th:if="${activeTrip.status.name() == 'IN_PROGRESS'}">NAVIGATING TO DESTINATION</span>
+                    </div>
+                    <div class="fw-bold text-dark small text-truncate" style="max-width: 260px;" id="driverNavTarget">
+                        <span th:if="${activeTrip.status.name() == 'ACCEPTED' or activeTrip.status.name() == 'ARRIVING'}" th:text="${activeTrip.pickupAddress}">Pickup Address</span>
+                        <span th:if="${activeTrip.status.name() == 'IN_PROGRESS'}" th:text="${activeTrip.dropoffAddress}">Dropoff Address</span>
+                    </div>
+                </div>
+                <!-- Google Maps External GPS Intent Shortcut -->
+                <a th:if="${activeTrip.status.name() == 'ACCEPTED' or activeTrip.status.name() == 'ARRIVING'}"
+                   th:href="'https://www.google.com/maps/dir/?api=1&destination=' + ${activeTrip.pickupLatitude} + ',' + ${activeTrip.pickupLongitude}"
+                   target="_blank" class="btn btn-sm btn-primary rounded-pill px-2 py-1 ms-1 text-nowrap" title="Open in Google Maps">
+                    <i class="bi bi-arrow-up-right-circle me-1"></i> GPS
+                </a>
+                <a th:if="${activeTrip.status.name() == 'IN_PROGRESS'}"
+                   th:href="'https://www.google.com/maps/dir/?api=1&destination=' + ${activeTrip.dropoffLatitude} + ',' + ${activeTrip.dropoffLongitude}"
+                   target="_blank" class="btn btn-sm btn-success rounded-pill px-2 py-1 ms-1 text-nowrap" title="Open in Google Maps">
+                    <i class="bi bi-arrow-up-right-circle me-1"></i> GPS
+                </a>
             </div>
         </div>
 
@@ -319,44 +346,72 @@
             iconSize: [28, 28]
         });
 
-        // 1. DUAL-LEG ROUTE RENDERING (Driver -> Pickup -> Dropoff)
+        // 1. DUAL-PHASE ROUTE NAVIGATION ENGINE
         let leg1RouteLayer = null;
         let leg2RouteLayer = null;
+        let pickupMarker = null;
+        let dropMarker = null;
 
         function renderDualLegRoutes() {
-            // Leg 1: Driver -> Pickup (Dashed Amber line)
-            fetch(`/api/geo/route?pLat=${driverPos[0]}&pLon=${driverPos[1]}&dLat=${pickupPos[0]}&dLon=${pickupPos[1]}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'SUCCESS' && data.geometry) {
-                        if (leg1RouteLayer) map.removeLayer(leg1RouteLayer);
-                        leg1RouteLayer = L.geoJSON(data.geometry, {
-                            style: { color: '#f59e0b', weight: 6, opacity: 0.9, dashArray: '8, 8' }
-                        }).addTo(map);
-                        if (!activeTrip || activeStatus !== 'IN_PROGRESS') {
-                            map.fitBounds(leg1RouteLayer.getBounds(), { padding: [80, 80] });
-                        }
-                    }
-                });
+            // Clean old layers before switching phase
+            if (leg1RouteLayer) map.removeLayer(leg1RouteLayer);
+            if (leg2RouteLayer) map.removeLayer(leg2RouteLayer);
 
-            // Leg 2: Pickup -> Dropoff (Solid Indigo/Blue line)
-            fetch(`/api/geo/route?pLat=${pickupPos[0]}&pLon=${pickupPos[1]}&dLat=${dropPos[0]}&dLon=${dropPos[1]}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'SUCCESS' && data.geometry) {
-                        if (leg2RouteLayer) map.removeLayer(leg2RouteLayer);
-                        leg2RouteLayer = L.geoJSON(data.geometry, {
-                            style: { color: '#4f46e5', weight: 6, opacity: 0.9, lineJoin: 'round' }
-                        }).addTo(map);
-                        if (activeTrip && activeStatus === 'IN_PROGRESS') {
-                            map.fitBounds(leg2RouteLayer.getBounds(), { padding: [80, 80] });
-                        }
-                    }
-                });
+            const isTripStarted = (activeStatus === 'IN_PROGRESS');
 
-            // Place key waypoint pins
-            L.marker(pickupPos, {icon: pIcon}).addTo(map).bindPopup("<b>Passenger Pickup</b>");
-            L.marker(dropPos, {icon: dIcon}).addTo(map).bindPopup("<b>Trip Destination</b>");
+            if (!isTripStarted) {
+                // PHASE 1: Navigation to Passenger Pickup (Amber Route)
+                console.log("[Driver Nav] Phase 1 active: Navigating to pickup");
+                fetch(`/api/geo/route?pLat=${driverPos[0]}&pLon=${driverPos[1]}&dLat=${pickupPos[0]}&dLon=${pickupPos[1]}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'SUCCESS' && data.geometry) {
+                            if (leg1RouteLayer) map.removeLayer(leg1RouteLayer);
+                            leg1RouteLayer = L.geoJSON(data.geometry, {
+                                style: { color: '#f59e0b', weight: 7, opacity: 0.95 }
+                            }).addTo(map);
+                            map.fitBounds(leg1RouteLayer.getBounds(), { padding: [70, 70] });
+                        }
+                    })
+                    .catch(err => console.warn("Phase 1 route fetch error:", err));
+
+                // Place pickup pin
+                if (!pickupMarker) {
+                    pickupMarker = L.marker(pickupPos, {icon: pIcon}).addTo(map).bindPopup("<b>Passenger Pickup Spot</b>");
+                } else {
+                    pickupMarker.setLatLng(pickupPos);
+                }
+
+            } else {
+                // PHASE 2: Navigation to Dropoff Destination (Indigo/Blue Route)
+                console.log("[Driver Nav] Phase 2 active: Navigating to destination");
+                if (pickupMarker) {
+                    map.removeLayer(pickupMarker);
+                    pickupMarker = null;
+                }
+
+                fetch(`/api/geo/route?pLat=${driverPos[0]}&pLon=${driverPos[1]}&dLat=${dropPos[0]}&dLon=${dropPos[1]}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'SUCCESS' && data.geometry) {
+                            if (leg2RouteLayer) map.removeLayer(leg2RouteLayer);
+                            leg2RouteLayer = L.geoJSON(data.geometry, {
+                                style: { color: '#4f46e5', weight: 7, opacity: 0.95, lineJoin: 'round' }
+                            }).addTo(map);
+                            map.fitBounds(leg2RouteLayer.getBounds(), { padding: [70, 70] });
+                        }
+                    })
+                    .catch(err => console.warn("Phase 2 route fetch error:", err));
+
+                // Place destination pin
+                if (!dropMarker) {
+                    dropMarker = L.marker(dropPos, {icon: dIcon}).addTo(map).bindPopup("<b>Destination Spot</b>");
+                } else {
+                    dropMarker.setLatLng(dropPos);
+                }
+            }
+
+            // Always update vehicle marker
             if (!driverMarker) {
                 driverMarker = L.marker(driverPos, {icon: driverIcon}).addTo(map).bindPopup("<b>Your Vehicle Location</b>");
             } else {
@@ -452,7 +507,7 @@
                     if (activeTrip && (activeTrip.status === 'ACCEPTED' || activeTrip.status === 'IN_PROGRESS' || activeTrip.status === 'ARRIVING')) {
                         startDriverGpsTelemetry(activeTrip.id);
 
-                        // Listen for cancellations from User or Admin
+                        // Listen for cancellations or status changes from User or Admin
                         driverStompClient.subscribe('/topic/ride/' + activeTrip.id + '/status', function (message) {
                             const event = JSON.parse(message.body);
                             console.log("[Driver STOMP] Trip Status Event:", event);
@@ -461,6 +516,11 @@
                                     window.showRideToast("Ride was cancelled: " + (event.message || "Ride cancelled by user/admin"), "warning", "bi-x-circle");
                                 }
                                 setTimeout(() => { window.location.reload(); }, 1200);
+                            } else if (event.status === 'ARRIVING' || event.status === 'IN_PROGRESS' || event.status === 'COMPLETED') {
+                                if (window.showRideToast) {
+                                    window.showRideToast(event.message || ("Ride update: " + event.status), "info", "bi-info-circle");
+                                }
+                                setTimeout(() => { window.location.reload(); }, 800);
                             }
                         });
                     }
