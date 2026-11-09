@@ -37,13 +37,37 @@ public class WebViewController {
     @Autowired
     private FareCalculationService fareCalculationService;
 
-    // 1. Root
+    // 1. Root & Base Redirects
     @GetMapping("/")
     public String index(HttpSession session) {
         if (session.getAttribute("USER_ID") != null) {
             return "redirect:/user/home";
         }
         return "redirect:/user/login";
+    }
+
+    @GetMapping("/user")
+    public String userRootRedirect(HttpSession session) {
+        if (session.getAttribute("USER_ID") != null) {
+            return "redirect:/user/home";
+        }
+        return "redirect:/user/login";
+    }
+
+    @GetMapping("/driver")
+    public String driverRootRedirect(HttpSession session) {
+        if (session.getAttribute("DRIVER_USER_ID") != null) {
+            return "redirect:/driver/dashboard";
+        }
+        return "redirect:/driver/login";
+    }
+
+    @GetMapping("/admin")
+    public String adminRootRedirect(HttpSession session) {
+        if (session.getAttribute("ADMIN_USER_ID") != null) {
+            return "redirect:/admin/dashboard";
+        }
+        return "redirect:/admin/login";
     }
 
     // 2. USER PANEL (Port 8080)
