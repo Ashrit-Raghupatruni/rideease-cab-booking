@@ -10,6 +10,7 @@ import java.io.File;
 
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableJpaAuditing
+@org.springframework.scheduling.annotation.EnableScheduling
 public class RideEaseApplication {
 
     public static void main(String[] args) {

@@ -12,4 +12,7 @@ public interface BookingRepository extends JpaRepository<Booking, String> {
     List<Booking> findByDriverIdOrderByCreatedAtDesc(String driverId);
     List<Booking> findByStatus(Booking.BookingStatus status);
     List<Booking> findByStatusIn(List<Booking.BookingStatus> statuses);
+    List<Booking> findByScheduledTrueAndStatusAndScheduledTimeLessThanEqual(
+            Booking.BookingStatus status, java.time.Instant scheduledTimeThreshold
+    );
 }

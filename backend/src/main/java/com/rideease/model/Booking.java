@@ -192,6 +192,7 @@ public class Booking {
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public enum BookingStatus {
+        SCHEDULED,
         REQUESTED,
         SEARCHING,
         ACCEPTED,

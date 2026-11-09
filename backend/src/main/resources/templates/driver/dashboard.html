@@ -106,8 +106,8 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Large Online / Offline Indicator Switch -->
                 <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
-                    <input class="form-check-input online-toggle-switch" type="checkbox" id="driverOnlineToggle" checked onchange="toggleDutyStatus(this.checked)">
-                    <label class="form-check-label text-white fw-bold small" for="driverOnlineToggle" id="onlineStatusLabel">
+                    <input class="form-check-input online-toggle-switch" type="checkbox" id="driverOnlineToggle" th:checked="${isOnline != null ? isOnline : true}" onchange="toggleDutyStatus(this.checked)">
+                    <label class="form-check-label text-white fw-bold small" for="driverOnlineToggle" id="onlineStatusLabel" th:text="${(isOnline != null and !isOnline) ? 'OFFLINE' : 'ONLINE'}">
                         ONLINE
                     </label>
                 </div>
@@ -266,10 +266,10 @@
 
                         <!-- Step 2: Complete Trip & Settle with Destination Arrival Check -->
                         <div th:if="${activeTrip.status.name() == 'IN_PROGRESS'}">
-                            <form th:action="@{/driver/ride/complete}" method="post" class="mb-2" id="completeTripForm" onsubmit="return confirmEarlyCompletion();">
+                            <form th:action="@{/driver/ride/complete}" method="post" class="mb-2" id="completeTripForm">
                                 <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <input type="hidden" name="earlyReason" id="earlyCompletionReason" value="">
-                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
+                                <button type="button" class="btn btn-success w-100 py-2 fw-bold shadow-sm" onclick="handleCompleteTripClick()">
                                     <i class="bi bi-flag-fill me-1"></i> Arrived at Destination — Complete Trip
                                 </button>
                             </form>
@@ -280,6 +280,63 @@
                                     <i class="bi bi-x-circle"></i> Drop Ride
                                 </button>
                             </form>
+                        </div>
+
+                        <!-- Step 3: Payment Settlement Confirmation for Driver (Online, Cash, Wallet, Card) -->
+                        <div th:if="${activeTrip.status.name() == 'COMPLETED' and (activeTrip.paymentStatus == null or activeTrip.paymentStatus.name() != 'PAID')}" class="mt-2">
+                            <div class="alert alert-info py-2 px-3 rounded-3 small mb-2 border-0 bg-info-subtle text-dark">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="bi bi-info-circle-fill text-primary fs-5"></i>
+                                    <strong>Destination Reached!</strong>
+                                </div>
+                                <div>Selected Mode: <span class="badge bg-primary text-uppercase" th:text="${activeTrip.paymentMethod != null ? activeTrip.paymentMethod.name() : 'CASH'}">CASH</span></div>
+                                <div class="mt-1">Fare to Collect: <strong class="text-success fs-6">₹<span th:text="${activeTrip.finalFare != null ? activeTrip.finalFare : activeTrip.estimatedFare}">0</span></strong></div>
+                            </div>
+
+                            <form th:action="@{/driver/payment/collect}" method="post">
+                                <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
+                                <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span th:if="${activeTrip.paymentMethod != null and activeTrip.paymentMethod.name() == 'CASH'}">Confirm Cash Collected</span>
+                                    <span th:if="${activeTrip.paymentMethod != null and (activeTrip.paymentMethod.name() == 'UPI' or activeTrip.paymentMethod.name() == 'CARD')}">Confirm Online Payment Received</span>
+                                    <span th:if="${activeTrip.paymentMethod != null and activeTrip.paymentMethod.name() == 'WALLET'}">Confirm Wallet Settlement</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Early Dropoff Confirmation Modal -->
+                <div class="modal fade" id="earlyCompletionModal" tabindex="-1" aria-labelledby="earlyCompletionModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="earlyCompletionModalLabel">
+                                    <span class="badge bg-warning text-dark p-2 rounded-circle"><i class="bi bi-exclamation-triangle-fill fs-5"></i></span>
+                                    Complete Trip Early?
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body py-3">
+                                <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                                    <i class="bi bi-geo-alt-fill me-1"></i>
+                                    <span id="earlyDistanceText">You are currently away from the passenger's destination point.</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Reason for Early Completion (Optional):</label>
+                                    <select class="form-select mb-2" id="earlyReasonSelect" onchange="checkCustomReason(this.value)">
+                                        <option value="Passenger requested early dropoff">Passenger requested early dropoff</option>
+                                        <option value="Road blocked / Traffic diversion">Road blocked / Traffic diversion</option>
+                                        <option value="Reached destination boundary">Reached destination boundary</option>
+                                        <option value="OTHER">Other reason (enter below)...</option>
+                                    </select>
+                                    <input type="text" class="form-control d-none" id="earlyReasonCustom" placeholder="Specify reason...">
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Go Back</button>
+                                <button type="button" class="btn btn-primary rounded-pill px-4 fw-bold" onclick="submitEarlyTripCompletion()">Confirm & Complete</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -311,9 +368,13 @@
         let dropPos = [16.5175, 80.6200];
         let activeStatus = 'ACCEPTED';
 
-        if (activeTrip && activeTrip.pickupLocation && activeTrip.pickupLocation.coordinates) {
-            pickupPos = [activeTrip.pickupLocation.coordinates[1], activeTrip.pickupLocation.coordinates[0]];
-            dropPos = [activeTrip.dropoffLocation.coordinates[1], activeTrip.dropoffLocation.coordinates[0]];
+        if (activeTrip) {
+            if (activeTrip.pickupLatitude != null && activeTrip.pickupLongitude != null) {
+                pickupPos = [activeTrip.pickupLatitude, activeTrip.pickupLongitude];
+            }
+            if (activeTrip.dropoffLatitude != null && activeTrip.dropoffLongitude != null) {
+                dropPos = [activeTrip.dropoffLatitude, activeTrip.dropoffLongitude];
+            }
             activeStatus = activeTrip.status;
         }
 
@@ -457,9 +518,24 @@
             requestDriverDeviceLocation();
         });
 
-        // Early completion distance verification
-        function confirmEarlyCompletion() {
-            if (!dropPos || !driverPos) return true;
+        // Early completion distance verification with custom Bootstrap Modal
+        let earlyModalInstance = null;
+
+        function checkCustomReason(val) {
+            const customInput = document.getElementById('earlyReasonCustom');
+            if (val === 'OTHER') {
+                customInput.classList.remove('d-none');
+                customInput.focus();
+            } else {
+                customInput.classList.add('d-none');
+            }
+        }
+
+        function handleCompleteTripClick() {
+            if (!dropPos || !driverPos) {
+                document.getElementById('completeTripForm').submit();
+                return;
+            }
 
             // Compute Haversine distance from driver current position to destination
             const R = 6371e3; // meters
@@ -473,18 +549,36 @@
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const distanceMeters = R * c;
 
-            // If more than 250 meters away from destination, request confirmation and optional reason
+            // If more than 250 meters away from destination, show themed modal
             if (distanceMeters > 250) {
-                const proceed = confirm(`⚠️ You are currently ${(distanceMeters / 1000).toFixed(1)} km away from the passenger's destination point.\n\nAre you sure you want to complete this ride early?`);
-                if (!proceed) return false;
-
-                const reason = prompt("Optional: Please provide a reason for early dropoff (e.g., Passenger requested early drop, Traffic diversion, Road blocked):", "Passenger requested early drop");
-                if (reason) {
-                    const reasonInput = document.getElementById('earlyCompletionReason');
-                    if (reasonInput) reasonInput.value = reason;
+                const distKm = (distanceMeters / 1000).toFixed(1);
+                document.getElementById('earlyDistanceText').innerHTML = 
+                    `<strong>Notice:</strong> You are currently <strong>${distKm} km</strong> away from the passenger's recorded destination.`;
+                
+                const modalEl = document.getElementById('earlyCompletionModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    earlyModalInstance = new bootstrap.Modal(modalEl);
+                    earlyModalInstance.show();
+                    return;
                 }
             }
-            return true;
+
+            // Otherwise, right at destination
+            document.getElementById('completeTripForm').submit();
+        }
+
+        function submitEarlyTripCompletion() {
+            const selectVal = document.getElementById('earlyReasonSelect').value;
+            const customVal = document.getElementById('earlyReasonCustom').value.trim();
+            const finalReason = (selectVal === 'OTHER' && customVal) ? customVal : selectVal;
+
+            const reasonInput = document.getElementById('earlyCompletionReason');
+            if (reasonInput) reasonInput.value = finalReason;
+
+            if (earlyModalInstance) {
+                earlyModalInstance.hide();
+            }
+            document.getElementById('completeTripForm').submit();
         }
 
         // Countdown timer animation for incoming request
@@ -503,6 +597,13 @@
             const label = document.getElementById('onlineStatusLabel');
             label.innerText = isOnline ? 'ONLINE' : 'OFFLINE';
             label.className = isOnline ? 'form-check-label text-white fw-bold small' : 'form-check-label text-white-50 fw-bold small';
+
+            fetch('/api/driver/status/online?online=' + isOnline, {
+                method: 'POST'
+            }).then(r => r.json())
+              .then(data => console.log("[Driver Status] Online set to:", isOnline, data))
+              .catch(e => console.warn("[Driver Status] Error syncing duty:", e));
+
             if (window.showRideToast) {
                 window.showRideToast(isOnline ? "You are now ONLINE to receive ride dispatches" : "You are now OFFLINE", isOnline ? "success" : "warning", "bi-power");
             }

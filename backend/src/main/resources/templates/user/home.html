@@ -128,12 +128,12 @@
                 <form th:action="@{/user/search}" method="get" id="rideForm" onsubmit="return validateBeforeSubmit()">
                     
                     <!-- Hidden Form Inputs for Exact Road Coordinates & Distances -->
-                    <input type="hidden" id="pLat" name="pickupLat" value="16.4445">
-                    <input type="hidden" id="pLon" name="pickupLon" value="80.5085">
-                    <input type="hidden" id="dLat" name="dropoffLat" value="16.5175">
-                    <input type="hidden" id="dLon" name="dropoffLon" value="80.6200">
-                    <input type="hidden" id="distKm" name="distanceKm" value="24.5">
-                    <input type="hidden" id="durMins" name="durationMinutes" value="35">
+                    <input type="hidden" id="pLat" name="pickupLat" value="">
+                    <input type="hidden" id="pLon" name="pickupLon" value="">
+                    <input type="hidden" id="dLat" name="dropoffLat" value="">
+                    <input type="hidden" id="dLon" name="dropoffLon" value="">
+                    <input type="hidden" id="distKm" name="distanceKm" value="">
+                    <input type="hidden" id="durMins" name="durationMinutes" value="">
 
                     <!-- 1. Pickup Input -->
                     <div class="mb-2 position-relative">
@@ -148,7 +148,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt-fill text-success"></i></span>
                             <input type="text" id="pickupInput" name="pickup" class="form-control border-start-0 ps-0" 
-                                   value="SRM University, AP (Neerukonda)" autocomplete="off" placeholder="Enter pickup location..."
+                                   value="" autocomplete="off" placeholder="Enter pickup location or enable GPS..."
                                    oninput="handleAutocomplete('pickup', this.value)">
                             <button class="btn btn-outline-light text-secondary border-start-0" type="button" onclick="clearField('pickup')">&times;</button>
                         </div>
@@ -168,7 +168,7 @@
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-pin-map-fill text-danger"></i></span>
                             <input type="text" id="dropoffInput" name="dropoff" class="form-control border-start-0 ps-0" 
-                                   value="Vijayawada Railway Station (Vijayawada)" autocomplete="off" placeholder="Where do you want to go?"
+                                   value="" autocomplete="off" placeholder="Where do you want to go?"
                                    oninput="handleAutocomplete('dropoff', this.value)">
                             <button class="btn btn-outline-light text-secondary border-start-0" type="button" onclick="clearField('dropoff')">&times;</button>
                         </div>
@@ -186,21 +186,21 @@
                         <div class="row text-center g-2">
                             <div class="col-4 border-end">
                                 <div class="text-muted small">Distance</div>
-                                <div class="fw-bold text-dark fs-6" id="statDistance">24.5 km</div>
+                                <div class="fw-bold text-dark fs-6" id="statDistance">--</div>
                             </div>
                             <div class="col-4 border-end">
                                 <div class="text-muted small">Est. Time</div>
-                                <div class="fw-bold text-dark fs-6" id="statDuration">35 mins</div>
+                                <div class="fw-bold text-dark fs-6" id="statDuration">--</div>
                             </div>
                             <div class="col-4">
                                 <div class="text-muted small">Est. Base</div>
-                                <div class="fw-bold text-primary fs-6" id="statFare">₹463.00</div>
+                                <div class="fw-bold text-primary fs-6" id="statFare">--</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Submit Button -->
-                    <button type="submit" id="btnProceedBooking" class="btn btn-toury w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                    <button type="submit" id="btnProceedBooking" class="btn btn-toury w-100 py-3 shadow-sm d-flex align-items-center justify-content-center gap-2" disabled>
                         <span>View Available Rides & Fares</span>
                         <i class="bi bi-arrow-right"></i>
                     </button>
@@ -266,8 +266,8 @@
                 }
             });
 
-            // Initial calculation of standard selected route
-            calculateAndRenderRoadRoute();
+            // Initial state: wait for user action or geolocation prompt
+            // calculateAndRenderRoadRoute will execute once coordinates are filled
         }
 
         function toggleMapPickMode(mode) {

@@ -152,12 +152,12 @@
                                 <i class="bi bi-person-fill"></i>
                             </div>
                             <div>
-                                <h3 class="h6 fw-bold text-dark mb-0" th:text="${driverName}">Ramesh Kumar</h3>
+                                <h3 class="h6 fw-bold text-dark mb-0" th:text="${driverName}">Captain</h3>
                                 <div class="small text-muted d-flex align-items-center gap-1">
-                                    <span class="badge bg-warning text-dark py-0 px-1"><i class="bi bi-star-fill text-dark me-1"></i>4.9</span>
-                                    <span>• Maruti Dzire (White)</span>
+                                    <span class="badge bg-warning text-dark py-0 px-1"><i class="bi bi-star-fill text-dark me-1"></i><span th:text="${driverRating}">5.0</span></span>
+                                    <span th:text="'• ' + ${vehicleName}">• Commercial Cab</span>
                                 </div>
-                                <div class="badge bg-secondary-subtle text-dark fw-bold mt-1">AP 16 BK 4492</div>
+                                <div class="badge bg-secondary-subtle text-dark fw-bold mt-1" th:text="${vehiclePlate}">COMMERCIAL</div>
                             </div>
                         </div>
                     </div>
@@ -170,7 +170,7 @@
                         <a href="#" onclick="alert('In-app driver messaging active on STOMP topic'); return false;" class="action-circle-btn bg-primary-subtle text-primary" title="Message">
                             <i class="bi bi-chat-dots-fill"></i>
                         </a>
-                        <a href="#" th:onclick="'const shareUrl = window.location.origin + \'/user/ride/' + ${booking.id} + '/share\'; navigator.clipboard.writeText(shareUrl); alert(\'Public live tracking link copied to clipboard!\'); return false;'" class="action-circle-btn bg-info-subtle text-info" title="Share Live Location">
+                        <a href="javascript:void(0)" onclick="shareLiveTrip()" class="action-circle-btn bg-info-subtle text-info" title="Share Live Location">
                             <i class="bi bi-share-fill"></i>
                         </a>
                         <button type="button" class="action-circle-btn bg-danger-subtle text-danger border-0" onclick="document.getElementById('cancelRideForm').submit();" title="Cancel Ride">
@@ -228,10 +228,21 @@
         const bookingId = /*[[${booking.id}]]*/ '';
         const bookingStatus = /*[[${booking.status.name()}]]*/ 'SEARCHING';
         
-        const pLon = /*[[${booking.pickupLocation.coordinates[0]}]]*/ 80.5085;
-        const pLat = /*[[${booking.pickupLocation.coordinates[1]}]]*/ 16.4445;
-        const dLon = /*[[${booking.dropoffLocation.coordinates[0]}]]*/ 80.6200;
-        const dLat = /*[[${booking.dropoffLocation.coordinates[1]}]]*/ 16.5175;
+        const pLat = /*[[${booking.pickupLatitude}]]*/ 16.4445;
+        const pLon = /*[[${booking.pickupLongitude}]]*/ 80.5085;
+        const dLat = /*[[${booking.dropoffLatitude}]]*/ 16.5175;
+        const dLon = /*[[${booking.dropoffLongitude}]]*/ 80.6200;
+
+        function shareLiveTrip() {
+            const shareUrl = window.location.origin + '/user/ride/' + bookingId + '/share';
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareUrl)
+                    .then(() => alert('Public live tracking link copied to clipboard!\n\nAnyone with this link can watch your trip live without signing in.'))
+                    .catch(() => prompt('Copy this public live tracking link:', shareUrl));
+            } else {
+                prompt('Copy this public live tracking link:', shareUrl);
+            }
+        }
 
         let map = L.map('live-trip-map', { zoomControl: false }).setView([pLat, pLon], 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
@@ -359,7 +370,12 @@
                         }
 
                         // Seamlessly transition UI when driver accepts, starts, or ride is cancelled
-                        if (event.status === 'ACCEPTED' || event.status === 'ARRIVING' || event.status === 'IN_PROGRESS' || event.status === 'COMPLETED') {
+                        if (event.status === 'COMPLETED') {
+                            if (window.showRideToast) {
+                                window.showRideToast("Trip completed! Redirecting to receipt & payment confirmation...", "success", "bi-check-circle-fill");
+                            }
+                            setTimeout(() => { window.location.href = '/user/ride/' + bookingId + '/receipt'; }, 1000);
+                        } else if (event.status === 'ACCEPTED' || event.status === 'ARRIVING' || event.status === 'IN_PROGRESS') {
                             setTimeout(() => { window.location.reload(); }, 600);
                         } else if (event.status === 'CANCELLED') {
                             if (window.showRideToast) {

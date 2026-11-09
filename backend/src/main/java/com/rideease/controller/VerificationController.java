@@ -179,6 +179,12 @@ public class VerificationController {
         model.addAttribute("pendingDrivers", driverRepository.findByVerificationStatus(Driver.VerificationStatus.PENDING));
         model.addAttribute("verifiedDrivers", driverRepository.findByVerificationStatus(Driver.VerificationStatus.APPROVED));
         model.addAttribute("allVehicles", vehicleRepository.findAll());
+
+        // Map userId to User object for full driver names and emails
+        java.util.Map<String, User> userMap = userRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+        model.addAttribute("userMap", userMap);
+
         return "admin/verifications";
     }
 

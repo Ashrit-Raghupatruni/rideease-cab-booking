@@ -194,7 +194,8 @@
                             <span th:if="${d.driverPhotoUrl == null}" class="badge bg-secondary">No Photo</span>
                         </td>
                         <td>
-                            <strong th:text="${d.userId}">User</strong>
+                            <strong th:text="${userMap != null and userMap[d.userId] != null ? userMap[d.userId].name : d.userId}">User</strong>
+                            <small class="d-block text-muted" th:text="${userMap != null and userMap[d.userId] != null ? userMap[d.userId].email : ''}">driver@email.com</small>
                             <small class="d-block text-muted">Completed Trips: <span th:text="${d.totalTrips}">0</span></small>
                         </td>
                         <td>

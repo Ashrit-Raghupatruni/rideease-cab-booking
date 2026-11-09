@@ -21,6 +21,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -113,13 +114,40 @@ public class RideOperationController {
         booking.setOtpAttempts(0);
         booking.setPaymentMethod(request.getPaymentMethod());
         booking.setPaymentStatus(Booking.PaymentStatus.PENDING);
+
+        // Schedule For Later Processing
+        if (request.getScheduledDate() != null && !request.getScheduledDate().isBlank() &&
+            request.getScheduledTime() != null && !request.getScheduledTime().isBlank()) {
+            try {
+                java.time.LocalDate sDate = java.time.LocalDate.parse(request.getScheduledDate().trim());
+                java.time.LocalTime sTime = java.time.LocalTime.parse(request.getScheduledTime().trim());
+                java.time.LocalDateTime sDateTime = java.time.LocalDateTime.of(sDate, sTime);
+                Instant scheduledInstant = sDateTime.atZone(java.time.ZoneId.systemDefault()).toInstant();
+
+                booking.setScheduled(true);
+                booking.setScheduledTime(scheduledInstant);
+                // If scheduled for more than 20 minutes in the future, mark as SCHEDULED
+                if (scheduledInstant.isAfter(Instant.now().plus(java.time.Duration.ofMinutes(20)))) {
+                    booking.setStatus(Booking.BookingStatus.SCHEDULED);
+                }
+                log.info("Ride scheduled for future timestamp: {} (Status: {})", scheduledInstant, booking.getStatus());
+            } catch (Exception ex) {
+                log.warn("Failed to parse scheduled date/time: {} {}", request.getScheduledDate(), request.getScheduledTime());
+            }
+        }
+
         booking.setCreatedAt(Instant.now());
         booking.setUpdatedAt(Instant.now());
 
         Booking savedBooking = bookingRepository.save(booking);
         log.info("Booking created successfully: ID {}, passenger {}, distance {} km, fare ₹{}", savedBooking.getId(), userId, distanceKm, fare);
 
-        // Real-Time Event Dispatch
+        if (savedBooking.getStatus() == Booking.BookingStatus.SCHEDULED) {
+            // For future scheduled rides, redirect to My Rides with a scheduled confirmation message
+            return "redirect:/user/rides?scheduled=true";
+        }
+
+        // Real-Time Event Dispatch for immediate rides
         realtimeDispatchService.broadcastNewRideRequest(savedBooking);
         realtimeDispatchService.broadcastBookingStatus(savedBooking, "Searching for nearby captains");
 
@@ -274,6 +302,14 @@ public class RideOperationController {
         booking.setUpdatedAt(Instant.now());
         bookingRepository.save(booking);
 
+        // Increment driver total completed trips and restore driver availability
+        driverRepository.findByUserId(driverUserId).ifPresent(d -> {
+            d.setTotalTrips(d.getTotalTrips() + 1);
+            d.setAvailable(true);
+            driverRepository.save(d);
+            log.info("Driver {} completed trip. Total trips incremented to {}", driverUserId, d.getTotalTrips());
+        });
+
         realtimeDispatchService.broadcastBookingStatus(booking, "Trip completed! Total: ₹" + booking.getFinalFare());
         realtimeDispatchService.purgeTelemetry(bookingId);
 
@@ -282,7 +318,74 @@ public class RideOperationController {
     }
 
     /**
-     * 5. Driver Collects Cash & Marks Payment Paid (Idempotent)
+     * 5a. Driver Duty Online/Offline Toggle API
+     */
+    @PostMapping("/api/driver/status/online")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<?> setDriverOnlineStatus(
+            @RequestParam boolean online,
+            HttpSession session
+    ) {
+        String driverUserId = (String) session.getAttribute("DRIVER_USER_ID");
+        if (driverUserId == null) {
+            return org.springframework.http.ResponseEntity.status(401).body(java.util.Map.of("error", "Unauthorized"));
+        }
+
+        driverRepository.findByUserId(driverUserId).ifPresent(d -> {
+            d.setOnline(online);
+            driverRepository.save(d);
+            log.info("Driver {} duty status updated to online={}", driverUserId, online);
+        });
+
+        return org.springframework.http.ResponseEntity.ok(java.util.Map.of("status", "SUCCESS", "online", online));
+    }
+
+    /**
+     * 5b. Passenger / User Settles or Confirms Payment
+     */
+    @PostMapping("/user/payment/settle")
+    public String userSettlePayment(
+            @RequestParam String bookingId,
+            HttpSession session
+    ) {
+        String userId = (String) session.getAttribute("USER_ID");
+        if (userId == null) {
+            return "redirect:/user/login";
+        }
+
+        Optional<Booking> opt = bookingRepository.findById(bookingId);
+        if (opt.isPresent()) {
+            Booking booking = opt.get();
+            if (userId.equals(booking.getPassengerId()) && booking.getPaymentStatus() != Booking.PaymentStatus.PAID) {
+                // If wallet selected and still unpaid, debit wallet
+                if (booking.getPaymentMethod() == Booking.PaymentMethod.WALLET) {
+                    Optional<User> passengerOpt = userRepository.findById(userId);
+                    if (passengerOpt.isPresent()) {
+                        User p = passengerOpt.get();
+                        double amount = (booking.getFinalFare() != null) ? booking.getFinalFare() : booking.getEstimatedFare();
+                        if (p.getWalletBalance() >= amount) {
+                            p.setWalletBalance(p.getWalletBalance() - amount);
+                            userRepository.save(p);
+                        }
+                    }
+                }
+
+                booking.setPaymentStatus(Booking.PaymentStatus.PAID);
+                booking.setPaymentTransactionId("TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                booking.setPaidAt(Instant.now());
+                booking.setUpdatedAt(Instant.now());
+                bookingRepository.save(booking);
+
+                realtimeDispatchService.broadcastBookingStatus(booking, "Payment confirmed and settled successfully!");
+                log.info("User {} confirmed settlement for booking {}. PaymentStatus: PAID", userId, bookingId);
+            }
+        }
+
+        return "redirect:/user/ride/" + bookingId + "/receipt?settled=true";
+    }
+
+    /**
+     * 5c. Driver Collects Cash & Marks Payment Paid (Idempotent)
      */
     @PostMapping("/driver/payment/collect")
     public String driverCollectPayment(
@@ -301,12 +404,16 @@ public class RideOperationController {
                 booking.getStatus() == Booking.BookingStatus.COMPLETED &&
                 booking.getPaymentStatus() != Booking.PaymentStatus.PAID) {
 
+                String txnPrefix = (booking.getPaymentMethod() == Booking.PaymentMethod.CASH) ? "CSH-" : "TXN-";
                 booking.setPaymentStatus(Booking.PaymentStatus.PAID);
-                booking.setPaymentTransactionId("CSH-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                booking.setPaymentTransactionId(txnPrefix + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
                 booking.setPaidAt(Instant.now());
                 booking.setUpdatedAt(Instant.now());
                 bookingRepository.save(booking);
-                log.info("Driver {} confirmed cash collection for booking {}", driverUserId, bookingId);
+
+                // Broadcast payment confirmation to passenger live receipt
+                realtimeDispatchService.broadcastBookingStatus(booking, "Payment confirmed received by captain! Booking settled.");
+                log.info("Driver {} confirmed payment received ({}) for booking {}", driverUserId, booking.getPaymentMethod(), bookingId);
             }
         }
         return "redirect:/driver/dashboard";

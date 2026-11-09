@@ -152,19 +152,29 @@ public class WebViewController {
         model.addAttribute("driverEmail", driverUserOpt.map(User::getEmail).orElse(""));
 
         Optional<Driver> driverOpt = driverRepository.findByUserId(driverUserId);
+        if (driverOpt.isPresent()) {
+            Driver d = driverOpt.get();
+            // Automatically mark driver online when active on dashboard
+            if (!d.isOnline()) {
+                d.setOnline(true);
+                driverRepository.save(d);
+            }
+        }
         double driverRating = driverOpt.map(Driver::getRating).orElse(5.0);
         model.addAttribute("driverRating", String.format("%.2f", driverRating));
+        model.addAttribute("isOnline", driverOpt.map(Driver::isOnline).orElse(true));
 
         List<Booking> incomingRequests = bookingRepository.findByStatus(Booking.BookingStatus.SEARCHING);
         model.addAttribute("incomingRequests", incomingRequests);
 
-        // Fetch driver's active trip first (ACCEPTED, ARRIVING, IN_PROGRESS)
+        // Fetch driver's active trip first (ACCEPTED, ARRIVING, IN_PROGRESS, or COMPLETED with unpaid settlement)
         List<Booking> myDriverTrips = bookingRepository.findByDriverIdOrderByCreatedAtDesc(driverUserId);
         
         Optional<Booking> activeTripOpt = myDriverTrips.stream()
                 .filter(b -> b.getStatus() == Booking.BookingStatus.ACCEPTED ||
                              b.getStatus() == Booking.BookingStatus.ARRIVING ||
-                             b.getStatus() == Booking.BookingStatus.IN_PROGRESS)
+                             b.getStatus() == Booking.BookingStatus.IN_PROGRESS ||
+                             (b.getStatus() == Booking.BookingStatus.COMPLETED && (b.getPaymentStatus() == null || b.getPaymentStatus() == Booking.PaymentStatus.PENDING)))
                 .findFirst();
 
         model.addAttribute("activeTrip", activeTripOpt.orElse(null));
