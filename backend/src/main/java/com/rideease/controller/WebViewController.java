@@ -57,7 +57,8 @@ public class WebViewController {
         Optional<User> userOpt = userRepository.findById(userId);
         model.addAttribute("userName", userOpt.map(User::getName).orElse("Rider"));
         model.addAttribute("userEmail", userOpt.map(User::getEmail).orElse(""));
-        model.addAttribute("walletBalance", 2450.00);
+        double userWallet = userOpt.map(User::getWalletBalance).orElse(0.0);
+        model.addAttribute("walletBalance", userWallet);
 
         return "user/home";
     }
@@ -126,6 +127,10 @@ public class WebViewController {
         model.addAttribute("driverName", driverUserOpt.map(User::getName).orElse("Driver Partner"));
         model.addAttribute("driverEmail", driverUserOpt.map(User::getEmail).orElse(""));
 
+        Optional<Driver> driverOpt = driverRepository.findByUserId(driverUserId);
+        double driverRating = driverOpt.map(Driver::getRating).orElse(5.0);
+        model.addAttribute("driverRating", String.format("%.2f", driverRating));
+
         List<Booking> incomingRequests = bookingRepository.findByStatus(Booking.BookingStatus.SEARCHING);
         model.addAttribute("incomingRequests", incomingRequests);
 
@@ -184,6 +189,35 @@ public class WebViewController {
                 .filter(b -> b.getStatus() == Booking.BookingStatus.COMPLETED && b.getFinalFare() != null)
                 .mapToDouble(Booking::getFinalFare)
                 .sum();
+
+        // Dynamic 7-day volume & revenue aggregations (Mon-Sun of past 7 days)
+        java.time.LocalDate today = java.time.LocalDate.now();
+        List<String> chartLabels = new java.util.ArrayList<>();
+        List<Double> chartRevenue = new java.util.ArrayList<>();
+        List<Long> chartTrips = new java.util.ArrayList<>();
+
+        java.time.format.DateTimeFormatter dayFormatter = java.time.format.DateTimeFormatter.ofPattern("EEE");
+        for (int i = 6; i >= 0; i--) {
+            java.time.LocalDate targetDay = today.minusDays(i);
+            chartLabels.add(targetDay.format(dayFormatter));
+
+            double dayRev = allBookings.stream()
+                    .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate().isEqual(targetDay))
+                    .filter(b -> b.getStatus() == Booking.BookingStatus.COMPLETED && b.getFinalFare() != null)
+                    .mapToDouble(Booking::getFinalFare)
+                    .sum();
+            long dayTripCount = allBookings.stream()
+                    .filter(b -> b.getCreatedAt() != null && b.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate().isEqual(targetDay))
+                    .filter(b -> b.getStatus() == Booking.BookingStatus.COMPLETED)
+                    .count();
+
+            chartRevenue.add(dayRev);
+            chartTrips.add(dayTripCount);
+        }
+
+        model.addAttribute("chartLabels", chartLabels);
+        model.addAttribute("chartRevenue", chartRevenue);
+        model.addAttribute("chartTrips", chartTrips);
 
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("totalDrivers", totalDrivers);

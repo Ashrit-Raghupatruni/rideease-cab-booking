@@ -112,4 +112,56 @@
         return polyline;
     };
 
+    // 4. Interactive Movable & Expandable/Collapsible Sheet Handle Engine
+    document.addEventListener('DOMContentLoaded', function() {
+        const handleBars = document.querySelectorAll('.sheet-handle-bar');
+        handleBars.forEach(handle => {
+            const sheet = handle.closest('.floating-bottom-sheet, .tracking-sheet, .driver-hud-sheet');
+            if (!sheet) return;
+
+            // Click or tap on handle bar to cycle state: Default -> Expanded -> Minimized -> Default
+            handle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sheet.classList.contains('sheet-expanded')) {
+                    sheet.classList.remove('sheet-expanded');
+                    sheet.classList.add('sheet-minimized');
+                } else if (sheet.classList.contains('sheet-minimized')) {
+                    sheet.classList.remove('sheet-minimized');
+                } else {
+                    sheet.classList.add('sheet-expanded');
+                }
+            });
+
+            // Touch drag support for swiping up/down on mobile or touchscreens
+            let startY = 0;
+            let currentTranslate = 0;
+
+            handle.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) {
+                    startY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            handle.addEventListener('touchend', function(e) {
+                if (e.changedTouches.length === 1) {
+                    const endY = e.changedTouches[0].clientY;
+                    const diffY = endY - startY;
+
+                    if (diffY < -40) {
+                        // Swiped up -> Expand
+                        sheet.classList.remove('sheet-minimized');
+                        sheet.classList.add('sheet-expanded');
+                    } else if (diffY > 40) {
+                        // Swiped down -> Minimize or revert expanded
+                        if (sheet.classList.contains('sheet-expanded')) {
+                            sheet.classList.remove('sheet-expanded');
+                        } else {
+                            sheet.classList.add('sheet-minimized');
+                        }
+                    }
+                }
+            }, { passive: true });
+        });
+    });
+
 })();

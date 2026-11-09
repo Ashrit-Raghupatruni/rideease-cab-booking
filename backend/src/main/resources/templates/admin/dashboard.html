@@ -331,16 +331,21 @@
             });
         }
 
-        // Initialize Chart.js Volume & Revenue Trend
+    <script th:inline="javascript">
+        // Dynamic Chart.js Volume & Revenue Trend populated from Real Ledger Aggregations
+        const chartLabels = /*[[${chartLabels}]]*/ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const chartRevenue = /*[[${chartRevenue}]]*/ [0, 0, 0, 0, 0, 0, 0];
+        const chartTrips = /*[[${chartTrips}]]*/ [0, 0, 0, 0, 0, 0, 0];
+
         const ctx = document.getElementById('revenueChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                labels: chartLabels,
                 datasets: [
                     {
                         label: 'Gross Revenue (₹)',
-                        data: [4200, 6800, 5400, 7900, 9200, 11400, 14200],
+                        data: chartRevenue,
                         borderColor: '#4f46e5',
                         backgroundColor: 'rgba(79, 70, 229, 0.1)',
                         tension: 0.35,
@@ -349,7 +354,7 @@
                     },
                     {
                         label: 'Trips Completed',
-                        data: [12, 19, 15, 22, 28, 34, 42],
+                        data: chartTrips,
                         borderColor: '#10b981',
                         backgroundColor: 'transparent',
                         borderDash: [5, 5],
@@ -370,6 +375,8 @@
                 }
             }
         });
+    </script>
+    <script>
         // STOMP WebSocket for Live Fleet Operations & Trip Ledger Updates
         let adminStompClient = null;
 

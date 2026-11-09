@@ -27,6 +27,7 @@
             bottom: 24px;
             left: 24px;
             width: 460px;
+            min-height: 220px;
             max-width: calc(100vw - 48px);
             background: #ffffff;
             border-radius: 24px;
@@ -36,6 +37,7 @@
             max-height: calc(100vh - 110px);
             display: flex;
             flex-direction: column;
+            transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         @media (max-width: 768px) {
             .driver-hud-sheet {
@@ -151,7 +153,7 @@
                 <i class="bi bi-star-fill text-warning fs-5"></i>
                 <div>
                     <div class="text-muted" style="font-size: 0.7rem; font-weight: 600;">RATING</div>
-                    <div class="fw-bold text-dark fs-6">4.92 ★</div>
+                    <div class="fw-bold text-dark fs-6" th:text="${driverRating != null ? driverRating + ' ★' : '5.00 ★'}">5.00 ★</div>
                 </div>
             </div>
         </div>
@@ -215,7 +217,7 @@
 
                         <!-- Step 1: Start Trip with Passenger OTP -->
                         <div th:if="${activeTrip.status.name() == 'ACCEPTED' or activeTrip.status.name() == 'ARRIVING'}">
-                            <form th:action="@{/driver/ride/start}" method="post" class="row g-2">
+                            <form th:action="@{/driver/ride/start}" method="post" class="row g-2 mb-2">
                                 <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <div class="col-8">
                                     <input type="text" name="otp" class="form-control fw-bold text-center letter-spacing" placeholder="Enter Rider 4-digit OTP" maxlength="4" required>
@@ -226,14 +228,28 @@
                                     </button>
                                 </div>
                             </form>
+                            <!-- Drop Ride Option for Driver -->
+                            <form th:action="@{/driver/ride/drop}" method="post" onsubmit="return confirm('Are you sure you want to drop this ride? It will cancel the assignment and free your vehicle.');">
+                                <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1">
+                                    <i class="bi bi-x-circle"></i> Drop Ride
+                                </button>
+                            </form>
                         </div>
 
                         <!-- Step 2: Complete Trip & Settle -->
                         <div th:if="${activeTrip.status.name() == 'IN_PROGRESS'}">
-                            <form th:action="@{/driver/ride/complete}" method="post">
+                            <form th:action="@{/driver/ride/complete}" method="post" class="mb-2">
                                 <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
                                     <i class="bi bi-flag-fill me-1"></i> Arrived at Destination — Complete Trip
+                                </button>
+                            </form>
+                            <!-- Drop Ride Option for In-Progress Trip (Emergency / Driver cancellation) -->
+                            <form th:action="@{/driver/ride/drop}" method="post" onsubmit="return confirm('Are you sure you want to drop this in-progress ride?');">
+                                <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1">
+                                    <i class="bi bi-x-circle"></i> Drop Ride
                                 </button>
                             </form>
                         </div>
@@ -432,9 +448,21 @@
                         setTimeout(() => { window.location.reload(); }, 800);
                     });
 
-                    // 2. Start Live GPS Transmission if active trip exists
-                    if (activeTrip && (activeTrip.status === 'ACCEPTED' || activeTrip.status === 'IN_PROGRESS')) {
+                    // 2. Start Live GPS Transmission & listen for trip cancellation if active trip exists
+                    if (activeTrip && (activeTrip.status === 'ACCEPTED' || activeTrip.status === 'IN_PROGRESS' || activeTrip.status === 'ARRIVING')) {
                         startDriverGpsTelemetry(activeTrip.id);
+
+                        // Listen for cancellations from User or Admin
+                        driverStompClient.subscribe('/topic/ride/' + activeTrip.id + '/status', function (message) {
+                            const event = JSON.parse(message.body);
+                            console.log("[Driver STOMP] Trip Status Event:", event);
+                            if (event.status === 'CANCELLED') {
+                                if (window.showRideToast) {
+                                    window.showRideToast("Ride was cancelled: " + (event.message || "Ride cancelled by user/admin"), "warning", "bi-x-circle");
+                                }
+                                setTimeout(() => { window.location.reload(); }, 1200);
+                            }
+                        });
                     }
 
                 }, function(err) {

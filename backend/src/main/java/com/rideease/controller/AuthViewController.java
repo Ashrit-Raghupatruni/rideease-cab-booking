@@ -40,12 +40,17 @@ public class AuthViewController {
             HttpSession session,
             Model model
     ) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
+        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email);
+        }
         if (userOpt.isPresent() && passwordEncoder.matches(password, userOpt.get().getPassword())) {
             User user = userOpt.get();
             session.setAttribute("USER_ID", user.getId());
             session.setAttribute("USER_NAME", user.getName());
             session.setAttribute("USER_ROLE", user.getRole().name());
+            session.setAttribute("USER_EMAIL", user.getEmail());
             return "redirect:/user/home";
         }
         model.addAttribute("error", "Invalid email or password.");
@@ -110,7 +115,11 @@ public class AuthViewController {
             HttpSession session,
             Model model
     ) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
+        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email);
+        }
         if (userOpt.isPresent() && userOpt.get().getRole() == Role.DRIVER &&
                 passwordEncoder.matches(password, userOpt.get().getPassword())) {
             User driverUser = userOpt.get();
@@ -178,11 +187,16 @@ public class AuthViewController {
             HttpSession session,
             Model model
     ) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
+        Optional<User> userOpt = userRepository.findByEmail(cleanEmail);
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByEmail(email);
+        }
         if (userOpt.isPresent() && userOpt.get().getRole() == Role.ADMIN &&
                 passwordEncoder.matches(password, userOpt.get().getPassword())) {
             session.setAttribute("ADMIN_USER_ID", userOpt.get().getId());
             session.setAttribute("ADMIN_NAME", userOpt.get().getName());
+            session.setAttribute("ADMIN_EMAIL", userOpt.get().getEmail());
             return "redirect:/admin/dashboard";
         }
         model.addAttribute("error", "Unauthorized: Incorrect admin credentials.");

@@ -131,7 +131,8 @@ button:active, .btn:active {
     position: absolute;
     bottom: 24px;
     left: 24px;
-    width: 450px;
+    width: 460px;
+    min-height: 220px;
     max-width: calc(100vw - 48px);
     max-height: calc(100vh - 100px);
     background: #ffffff;
@@ -142,7 +143,19 @@ button:active, .btn:active {
     flex-direction: column;
     overflow: hidden;
     animation: sheetSpringUp var(--duration-sheet) var(--ease-drawer) forwards;
-    will-change: transform, opacity;
+    will-change: transform, height, max-height;
+    transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-bottom-sheet.sheet-expanded, .tracking-sheet.sheet-expanded, .driver-hud-sheet.sheet-expanded {
+    max-height: calc(100vh - 90px) !important;
+    height: auto;
+}
+
+.floating-bottom-sheet.sheet-minimized, .tracking-sheet.sheet-minimized, .driver-hud-sheet.sheet-minimized {
+    max-height: 84px !important;
+    min-height: 84px !important;
+    overflow: hidden !important;
 }
 
 @media (max-width: 768px) {
@@ -154,6 +167,10 @@ button:active, .btn:active {
         max-height: 85vh;
         border-radius: 24px 24px 0 0;
         box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+    }
+    .floating-bottom-sheet.sheet-minimized, .tracking-sheet.sheet-minimized, .driver-hud-sheet.sheet-minimized {
+        max-height: 72px !important;
+        min-height: 72px !important;
     }
 }
 
@@ -169,17 +186,23 @@ button:active, .btn:active {
 }
 
 .sheet-handle-bar {
-    width: 44px;
-    height: 5px;
+    width: 48px;
+    height: 6px;
     background: #cbd5e1;
     border-radius: 10px;
-    margin: 10px auto 4px auto;
-    cursor: grab;
-    transition: background 0.15s ease;
+    margin: 10px auto 6px auto;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.15s ease;
+    user-select: none;
+}
+
+.sheet-handle-bar:hover {
+    background: #94a3b8;
+    transform: scaleX(1.15);
 }
 
 .sheet-handle-bar:active {
-    background: #94a3b8;
+    background: #64748b;
     cursor: grabbing;
 }
 
