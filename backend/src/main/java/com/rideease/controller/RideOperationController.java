@@ -363,6 +363,16 @@ public class RideOperationController {
                 booking.setStatus(Booking.BookingStatus.CANCELLED);
                 booking.setUpdatedAt(Instant.now());
                 bookingRepository.save(booking);
+
+                // If a driver was already assigned, free the driver partner immediately
+                if (booking.getDriverId() != null) {
+                    driverRepository.findByUserId(booking.getDriverId()).ifPresent(d -> {
+                        d.setAvailable(true);
+                        driverRepository.save(d);
+                        log.info("Driver {} freed and set available after booking {} cancellation", d.getUserId(), bookingId);
+                    });
+                }
+
                 realtimeDispatchService.broadcastBookingStatus(booking, "Ride was cancelled by " + role);
                 realtimeDispatchService.purgeTelemetry(bookingId);
                 log.info("Booking {} cancelled by role {}", bookingId, role);
@@ -373,5 +383,44 @@ public class RideOperationController {
             return "redirect:/admin/dashboard";
         }
         return "redirect:/user/rides";
+    }
+
+    /**
+     * 8. Driver Drops Active Ride (Transactional)
+     * Frees the driver immediately and cancels the active assignment
+     */
+    @PostMapping({"/driver/ride/drop", "/ride/drop"})
+    public String driverDropRide(
+            @RequestParam String bookingId,
+            HttpSession session
+    ) {
+        String driverUserId = (String) session.getAttribute("DRIVER_USER_ID");
+        if (driverUserId == null) {
+            return "redirect:/driver/login";
+        }
+
+        Optional<Booking> bookingOpt = bookingRepository.findById(bookingId);
+        if (bookingOpt.isPresent()) {
+            Booking booking = bookingOpt.get();
+
+            // Verify assignment
+            if (driverUserId.equals(booking.getDriverId())) {
+                booking.setStatus(Booking.BookingStatus.CANCELLED);
+                booking.setUpdatedAt(Instant.now());
+                bookingRepository.save(booking);
+
+                // Free driver partner
+                driverRepository.findByUserId(driverUserId).ifPresent(d -> {
+                    d.setAvailable(true);
+                    driverRepository.save(d);
+                    log.info("Driver {} dropped booking {} and is now available", driverUserId, bookingId);
+                });
+
+                realtimeDispatchService.broadcastBookingStatus(booking, "Captain dropped the ride request.");
+                realtimeDispatchService.purgeTelemetry(bookingId);
+            }
+        }
+
+        return "redirect:/driver/dashboard";
     }
 }

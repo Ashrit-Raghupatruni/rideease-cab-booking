@@ -62,27 +62,45 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException ex) {
+    public ResponseEntity<?> handleNoResourceFound(NoResourceFoundException ex, jakarta.servlet.http.HttpServletRequest request) {
+        String acceptHeader = request.getHeader("Accept");
+        if (acceptHeader != null && acceptHeader.contains("text/html")) {
+            // For browser HTML requests, redirect back safely to default home
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header("Location", "/user/home")
+                    .build();
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", Instant.now().toString());
         response.put("status", HttpStatus.NOT_FOUND.value());
         response.put("error", "Not Found");
         response.put("message", ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
+    public ResponseEntity<?> handleGeneralException(Exception ex, jakarta.servlet.http.HttpServletRequest request) {
         log.error("Unhandled exception caught in GlobalExceptionHandler", ex);
+
+        String acceptHeader = request.getHeader("Accept");
+        if (acceptHeader != null && acceptHeader.contains("text/html")) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header("Location", "/user/home")
+                    .build();
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", Instant.now().toString());
         response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         response.put("error", "Internal Server Error");
         response.put("message", "An unexpected error occurred. Please try again later.");
 
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(response);
     }
 }

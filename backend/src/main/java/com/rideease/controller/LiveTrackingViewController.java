@@ -49,4 +49,29 @@ public class LiveTrackingViewController {
 
         return "user/track";
     }
+
+    /**
+     * Public Live Tracking Share Endpoint (No authentication required)
+     * Allows friends & family to view real-time location, pickup, and destination
+     */
+    @GetMapping({"/user/ride/{id}/share", "/ride/{id}/share"})
+    public String shareTrackRide(@PathVariable("id") String id, Model model) {
+        Optional<Booking> bookingOpt = bookingRepository.findById(id);
+        if (bookingOpt.isEmpty()) {
+            return "redirect:/user/login";
+        }
+
+        Booking booking = bookingOpt.get();
+        model.addAttribute("booking", booking);
+
+        // Load masked captain details for safety
+        if (booking.getDriverId() != null) {
+            Optional<User> driverUserOpt = userRepository.findById(booking.getDriverId());
+            model.addAttribute("driverName", driverUserOpt.map(User::getName).orElse("Captain"));
+        } else {
+            model.addAttribute("driverName", "Searching for Captain");
+        }
+
+        return "user/share_track";
+    }
 }

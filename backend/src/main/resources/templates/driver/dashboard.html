@@ -264,16 +264,17 @@
                             </form>
                         </div>
 
-                        <!-- Step 2: Complete Trip & Settle -->
+                        <!-- Step 2: Complete Trip & Settle with Destination Arrival Check -->
                         <div th:if="${activeTrip.status.name() == 'IN_PROGRESS'}">
-                            <form th:action="@{/driver/ride/complete}" method="post" class="mb-2">
+                            <form th:action="@{/driver/ride/complete}" method="post" class="mb-2" id="completeTripForm" onsubmit="return confirmEarlyCompletion();">
                                 <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
+                                <input type="hidden" name="earlyReason" id="earlyCompletionReason" value="">
                                 <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow-sm">
                                     <i class="bi bi-flag-fill me-1"></i> Arrived at Destination — Complete Trip
                                 </button>
                             </form>
                             <!-- Drop Ride Option for In-Progress Trip (Emergency / Driver cancellation) -->
-                            <form th:action="@{/driver/ride/drop}" method="post" onsubmit="return confirm('Are you sure you want to drop this in-progress ride?');">
+                            <form th:action="@{/driver/ride/drop}" method="post" onsubmit="return confirm('Are you sure you want to drop this in-progress ride? It will cancel the assignment and free your vehicle.');">
                                 <input type="hidden" name="bookingId" th:value="${activeTrip.id}">
                                 <button type="submit" class="btn btn-outline-danger btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1">
                                     <i class="bi bi-x-circle"></i> Drop Ride
@@ -455,6 +456,36 @@
         window.addEventListener('DOMContentLoaded', () => {
             requestDriverDeviceLocation();
         });
+
+        // Early completion distance verification
+        function confirmEarlyCompletion() {
+            if (!dropPos || !driverPos) return true;
+
+            // Compute Haversine distance from driver current position to destination
+            const R = 6371e3; // meters
+            const φ1 = driverPos[0] * Math.PI / 180;
+            const φ2 = dropPos[0] * Math.PI / 180;
+            const Δφ = (dropPos[0] - driverPos[0]) * Math.PI / 180;
+            const Δλ = (dropPos[1] - driverPos[1]) * Math.PI / 180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distanceMeters = R * c;
+
+            // If more than 250 meters away from destination, request confirmation and optional reason
+            if (distanceMeters > 250) {
+                const proceed = confirm(`⚠️ You are currently ${(distanceMeters / 1000).toFixed(1)} km away from the passenger's destination point.\n\nAre you sure you want to complete this ride early?`);
+                if (!proceed) return false;
+
+                const reason = prompt("Optional: Please provide a reason for early dropoff (e.g., Passenger requested early drop, Traffic diversion, Road blocked):", "Passenger requested early drop");
+                if (reason) {
+                    const reasonInput = document.getElementById('earlyCompletionReason');
+                    if (reasonInput) reasonInput.value = reason;
+                }
+            }
+            return true;
+        }
 
         // Countdown timer animation for incoming request
         let seconds = 15;

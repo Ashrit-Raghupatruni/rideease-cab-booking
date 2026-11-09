@@ -170,7 +170,7 @@
                         <a href="#" onclick="alert('In-app driver messaging active on STOMP topic'); return false;" class="action-circle-btn bg-primary-subtle text-primary" title="Message">
                             <i class="bi bi-chat-dots-fill"></i>
                         </a>
-                        <a href="#" onclick="navigator.clipboard.writeText(window.location.href); alert('Trip tracking link copied to clipboard!'); return false;" class="action-circle-btn bg-info-subtle text-info" title="Share Trip">
+                        <a href="#" th:onclick="'const shareUrl = window.location.origin + \'/user/ride/' + ${booking.id} + '/share\'; navigator.clipboard.writeText(shareUrl); alert(\'Public live tracking link copied to clipboard!\'); return false;'" class="action-circle-btn bg-info-subtle text-info" title="Share Live Location">
                             <i class="bi bi-share-fill"></i>
                         </a>
                         <button type="button" class="action-circle-btn bg-danger-subtle text-danger border-0" onclick="document.getElementById('cancelRideForm').submit();" title="Cancel Ride">
