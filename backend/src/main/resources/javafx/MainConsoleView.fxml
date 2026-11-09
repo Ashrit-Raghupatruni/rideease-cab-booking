@@ -9,6 +9,8 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
@@ -17,92 +19,321 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="780.0" prefWidth="1180.0" style="-fx-background-color: #0f172a; -fx-font-family: 'Segoe UI', sans-serif;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.rideease.javafx.controller.MainConsoleController">
-    <!-- Top Header -->
+<BorderPane prefHeight="820.0" prefWidth="1200.0" style="-fx-background-color: #0b0f19; -fx-font-family: 'Segoe UI', system-ui, sans-serif;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.rideease.javafx.controller.MainConsoleController">
+    <!-- Top Modern Application Bar -->
     <top>
-        <VBox style="-fx-background-color: #0f172a; -fx-padding: 14px 24px; -fx-border-color: #1e293b; -fx-border-width: 0 0 1px 0;">
+        <VBox style="-fx-background-color: #111827; -fx-padding: 14px 24px; -fx-border-color: #1f2937; -fx-border-width: 0 0 1px 0;">
             <HBox alignment="CENTER_LEFT" spacing="16.0">
-                <Label style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" text="RideEase Unified Command Console" />
-                <Label style="-fx-background-color: #1e293b; -fx-text-fill: #38bdf8; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-size: 11px; -fx-font-weight: bold;" text="All Ports JavaFX Desktop" />
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-size: 16px; -fx-padding: 6px 10px; -fx-background-radius: 8px; -fx-font-weight: bold;" text="RE" />
+                    <VBox spacing="1.0">
+                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" text="RideEase Unified Command Console" />
+                        <Label style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" text="Multi-Port Native Dispatch &amp; Operations Center" />
+                    </VBox>
+                </HBox>
+                <Label style="-fx-background-color: #1e1b4b; -fx-text-fill: #a5b4fc; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-size: 11px; -fx-font-weight: bold; -fx-border-color: #3730a3; -fx-border-radius: 12px;" text="JavaFX Desktop Native" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button fx:id="refreshButton" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px; -fx-padding: 6px 14px; -fx-cursor: hand;" text="⚡ Refresh Database" />
+                
+                <!-- Status Badges for all 3 Ports -->
+                <HBox alignment="CENTER" spacing="8.0" style="-fx-background-color: #1f2937; -fx-padding: 4px 12px; -fx-background-radius: 20px;">
+                    <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8080 Rider" />
+                    <Label style="-fx-text-fill: #4b5563; -fx-font-size: 11px;" text="|" />
+                    <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8081 Driver" />
+                    <Label style="-fx-text-fill: #4b5563; -fx-font-size: 11px;" text="|" />
+                    <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8082 Admin" />
+                </HBox>
+                
+                <Button fx:id="refreshButton" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px; -fx-padding: 7px 16px; -fx-cursor: hand;" text="↻ Refresh System" />
             </HBox>
         </VBox>
     </top>
 
-    <!-- Center Content: All 3 Portals + Compliance & Analytics Tabs -->
+    <!-- Main Responsive Tab Navigation -->
     <center>
-        <TabPane fx:id="mainTabPane" style="-fx-background-color: #0f172a;" tabClosingPolicy="UNAVAILABLE">
+        <TabPane fx:id="mainTabPane" style="-fx-background-color: #0b0f19;" tabClosingPolicy="UNAVAILABLE">
             
-            <!-- PORTAL 1: PASSENGER / RIDER (Port 8080) -->
-            <Tab fx:id="tabRider" text="🚗 Rider Portal (Port 8080)">
-                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
-                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
-                        <Label style="-fx-font-size: 36px;" text="🚗" />
-                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Passenger / Rider Portal" />
-                        <Label style="-fx-background-color: #e0e7ff; -fx-text-fill: #4338ca; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8080/" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Interactive Leaflet GPS Map, Live OSRM Road Routes, Tiered Vehicle Selection, Scheduled Bookings, and Trip Tracking." wrapText="true" />
-                        <HBox alignment="CENTER" spacing="12.0">
-                            <Button fx:id="btnLaunchRider" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Rider Portal in Browser" />
+            <!-- TAB 1: NATIVE RIDER BOOKING CONSOLE (PORT 8080) -->
+            <Tab fx:id="tabRider" text="🚗 Rider Console (Port 8080)">
+                <ScrollPane fitToHeight="true" fitToWidth="true" style="-fx-background: #0b0f19; -fx-border-color: transparent;">
+                    <VBox spacing="20.0" style="-fx-padding: 24px; -fx-background-color: #0b0f19;">
+                        <!-- Rider Header Banner -->
+                        <HBox alignment="CENTER_LEFT" spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 16px 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;">
+                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" text="Passenger Booking Terminal" />
+                                <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;" text="Configure journey locations, estimate tiered tariffs, and dispatch nearby drivers in real-time." />
+                            </VBox>
+                            <Button fx:id="btnLaunchRider" style="-fx-background-color: #1f2937; -fx-text-fill: #a5b4fc; -fx-font-weight: bold; -fx-padding: 8px 14px; -fx-background-radius: 8px; -fx-cursor: hand; -fx-border-color: #3730a3; -fx-border-radius: 8px;" text="↗ Open in Web Browser (8080)" />
                         </HBox>
+
+                        <!-- Responsive 2-Column Grid: Form & Fare Estimate / Booking Status -->
+                        <GridPane hgap="20.0" vgap="20.0" VBox.vgrow="ALWAYS">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="50.0" />
+                                <ColumnConstraints percentWidth="50.0" />
+                            </columnConstraints>
+
+                            <!-- Left Card: Origin, Destination & Vehicle Selection -->
+                            <VBox spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="0">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Trip Route &amp; Ride Tier" />
+                                
+                                <VBox spacing="6.0">
+                                    <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af; -fx-font-weight: bold;" text="PICKUP LOCATION" />
+                                    <TextField fx:id="txtRiderPickup" promptText="e.g. Visakhapatnam Beach Road" style="-fx-background-color: #1f2937; -fx-text-fill: white; -fx-prompt-text-fill: #6b7280; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #374151; -fx-border-radius: 8px;" text="Visakhapatnam Beach Road" />
+                                </VBox>
+
+                                <VBox spacing="6.0">
+                                    <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af; -fx-font-weight: bold;" text="DESTINATION DROP-OFF" />
+                                    <TextField fx:id="txtRiderDrop" promptText="e.g. Rushikonda IT Park" style="-fx-background-color: #1f2937; -fx-text-fill: white; -fx-prompt-text-fill: #6b7280; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #374151; -fx-border-radius: 8px;" text="Rushikonda IT Park" />
+                                </VBox>
+
+                                <VBox spacing="6.0">
+                                    <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af; -fx-font-weight: bold;" text="SELECT VEHICLE CATEGORY" />
+                                    <HBox spacing="10.0">
+                                        <Button fx:id="btnTierMini" maxWidth="Infinity" style="-fx-background-color: #1f2937; -fx-text-fill: white; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #374151; -fx-border-radius: 8px; -fx-font-weight: bold; -fx-cursor: hand;" text="🚗 MINI" HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="btnTierSedan" maxWidth="Infinity" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #6366f1; -fx-border-radius: 8px; -fx-font-weight: bold; -fx-cursor: hand;" text="🚙 SEDAN" HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="btnTierSuv" maxWidth="Infinity" style="-fx-background-color: #1f2937; -fx-text-fill: white; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #374151; -fx-border-radius: 8px; -fx-font-weight: bold; -fx-cursor: hand;" text="🚐 SUV" HBox.hgrow="ALWAYS" />
+                                    </HBox>
+                                </VBox>
+
+                                <Button fx:id="btnCalculateFare" maxWidth="Infinity" style="-fx-background-color: #3730a3; -fx-text-fill: #e0e7ff; -fx-padding: 10px; -fx-background-radius: 8px; -fx-font-weight: bold; -fx-cursor: hand;" text="Calculate OSRM Route &amp; Tariff" />
+                            </VBox>
+
+                            <!-- Right Card: Instant Fare Breakdown & Book Action -->
+                            <VBox spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="1">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Tariff Estimate &amp; Dispatch Status" />
+
+                                <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #1e1b4b; -fx-padding: 14px; -fx-background-radius: 8px; -fx-border-color: #312e81; -fx-border-radius: 8px;">
+                                    <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+                                        <Label style="-fx-font-size: 11px; -fx-text-fill: #a5b4fc; -fx-font-weight: bold;" text="ESTIMATED FARE (SEDAN)" />
+                                        <Label fx:id="lblFareAmount" style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;" text="₹ 245.00" />
+                                    </VBox>
+                                    <VBox alignment="CENTER_RIGHT" spacing="2.0">
+                                        <Label fx:id="lblDistance" style="-fx-font-size: 13px; -fx-text-fill: #e2e8f0; -fx-font-weight: bold;" text="Distance: 12.4 km" />
+                                        <Label fx:id="lblDuration" style="-fx-font-size: 12px; -fx-text-fill: #94a3b8;" text="Est. Time: ~24 mins" />
+                                    </VBox>
+                                </HBox>
+
+                                <!-- Active Ride Lifecycle Card -->
+                                <VBox fx:id="cardRideLifecycle" spacing="8.0" style="-fx-background-color: #1f2937; -fx-padding: 14px; -fx-background-radius: 8px; -fx-border-color: #374151; -fx-border-radius: 8px;">
+                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                        <Label style="-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 13px;" text="● RIDE STATUS:" />
+                                        <Label fx:id="lblRiderBookingStatus" style="-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 13px;" text="READY FOR DISPATCH" />
+                                    </HBox>
+                                    <Label fx:id="lblAssignedDriver" style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;" text="Nearby Drivers Available: 4 active in zone" />
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <Label style="-fx-font-size: 11px; -fx-text-fill: #9ca3af;" text="Trip OTP:" />
+                                        <Label fx:id="lblRiderOtp" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-background-color: #312e81; -fx-padding: 2px 8px; -fx-background-radius: 4px;" text="7429" />
+                                    </HBox>
+                                </VBox>
+
+                                <HBox spacing="10.0">
+                                    <Button fx:id="btnBookRide" maxWidth="Infinity" style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12px; -fx-background-radius: 8px; -fx-cursor: hand; -fx-font-size: 14px;" text="⚡ Book Instant Cab Now" HBox.hgrow="ALWAYS" />
+                                    <Button fx:id="btnCancelRide" style="-fx-background-color: #374151; -fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-padding: 12px 16px; -fx-background-radius: 8px; -fx-cursor: hand;" text="Cancel" />
+                                </HBox>
+                            </VBox>
+                        </GridPane>
                     </VBox>
-                </VBox>
+                </ScrollPane>
             </Tab>
 
-            <!-- PORTAL 2: DRIVER PARTNER TERMINAL (Port 8081) -->
+            <!-- TAB 2: NATIVE DRIVER PARTNER TERMINAL (PORT 8081) -->
             <Tab fx:id="tabDriver" text="🚕 Driver Terminal (Port 8081)">
-                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
-                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
-                        <Label style="-fx-font-size: 36px;" text="🚕" />
-                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Driver Partner Hub" />
-                        <Label style="-fx-background-color: #d1fae5; -fx-text-fill: #065f46; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8081/driver/login" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Duty Online/Offline Switch, 15s Countdown Request Cards, Dual-Leg OSRM Navigation, Rider 4-digit OTP Verification, and Payment Settlement." wrapText="true" />
-                        <HBox alignment="CENTER" spacing="12.0">
-                            <Button fx:id="btnLaunchDriver" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Driver Terminal in Browser" />
+                <ScrollPane fitToHeight="true" fitToWidth="true" style="-fx-background: #0b0f19; -fx-border-color: transparent;">
+                    <VBox spacing="20.0" style="-fx-padding: 24px; -fx-background-color: #0b0f19;">
+                        <!-- Driver Header Banner -->
+                        <HBox alignment="CENTER_LEFT" spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 16px 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;">
+                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" text="Driver Partner Dispatch Terminal" />
+                                <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;" text="Manage your duty state, receive incoming trip dispatches, verify rider OTPs, and settle ride fares." />
+                            </VBox>
+                            <Button fx:id="btnLaunchDriver" style="-fx-background-color: #1f2937; -fx-text-fill: #34d399; -fx-font-weight: bold; -fx-padding: 8px 14px; -fx-background-radius: 8px; -fx-cursor: hand; -fx-border-color: #065f46; -fx-border-radius: 8px;" text="↗ Open in Web Browser (8081)" />
                         </HBox>
+
+                        <!-- Driver Dynamic Panels: Duty Control + Radar Ride Dispatch -->
+                        <GridPane hgap="20.0" vgap="20.0" VBox.vgrow="ALWAYS">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="40.0" />
+                                <ColumnConstraints percentWidth="60.0" />
+                            </columnConstraints>
+
+                            <!-- Left: Duty Status & Shift Counters -->
+                            <VBox spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="0">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Shift &amp; Duty Controls" />
+                                
+                                <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #064e3b; -fx-padding: 14px; -fx-background-radius: 8px; -fx-border-color: #047857; -fx-border-radius: 8px;">
+                                    <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+                                        <Label style="-fx-font-size: 11px; -fx-text-fill: #a7f3d0; -fx-font-weight: bold;" text="CURRENT SHIFT DUTY" />
+                                        <Label fx:id="lblDriverDutyStatus" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #34d399;" text="ONLINE (Ready for Rides)" />
+                                    </VBox>
+                                    <Button fx:id="btnToggleDuty" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8px 14px; -fx-background-radius: 6px; -fx-cursor: hand;" text="Go Offline" />
+                                </HBox>
+
+                                <VBox spacing="10.0">
+                                    <HBox alignment="CENTER_LEFT" style="-fx-background-color: #1f2937; -fx-padding: 10px 14px; -fx-background-radius: 8px;">
+                                        <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 13px;" text="Today's Total Trips:" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="lblDriverCompletedTrips" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;" text="12 Rides" />
+                                    </HBox>
+                                    <HBox alignment="CENTER_LEFT" style="-fx-background-color: #1f2937; -fx-padding: 10px 14px; -fx-background-radius: 8px;">
+                                        <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 13px;" text="Today's Gross Earnings:" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="lblDriverEarnings" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #10b981;" text="₹ 2,840.00" />
+                                    </HBox>
+                                    <HBox alignment="CENTER_LEFT" style="-fx-background-color: #1f2937; -fx-padding: 10px 14px; -fx-background-radius: 8px;">
+                                        <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 13px;" text="Partner Rating:" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;" text="★ 4.92 / 5.0" />
+                                    </HBox>
+                                </VBox>
+                            </VBox>
+
+                            <!-- Right: Live Ride Request Dispatch Radar -->
+                            <VBox spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="1">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Incoming Ride Dispatch Radar" />
+
+                                <VBox fx:id="cardIncomingTrip" spacing="12.0" style="-fx-background-color: #1f2937; -fx-padding: 18px; -fx-background-radius: 10px; -fx-border-color: #4f46e5; -fx-border-radius: 10px; -fx-border-width: 1.5px;">
+                                    <HBox alignment="CENTER_LEFT">
+                                        <Label style="-fx-background-color: #312e81; -fx-text-fill: #a5b4fc; -fx-padding: 3px 8px; -fx-background-radius: 6px; -fx-font-size: 11px; -fx-font-weight: bold;" text="NEW TRIP DISPATCH" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Label fx:id="lblCountdownTimer" style="-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 13px;" text="⏱ 14s auto-decline" />
+                                    </HBox>
+                                    
+                                    <VBox spacing="4.0">
+                                        <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: bold;" text="RIDER &amp; ROUTE" />
+                                        <Label fx:id="lblIncomingPassenger" style="-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;" text="Priya Sharma (★ 4.95)" />
+                                        <Label fx:id="lblIncomingRoute" style="-fx-text-fill: #cbd5e1; -fx-font-size: 13px;" text="Visakhapatnam Beach Road ➔ Rushikonda IT Park (12.4 km)" wrapText="true" />
+                                    </VBox>
+
+                                    <HBox alignment="CENTER_LEFT" spacing="16.0">
+                                        <Label fx:id="lblIncomingPayout" style="-fx-text-fill: #10b981; -fx-font-size: 20px; -fx-font-weight: bold;" text="₹ 245.00 Payout" />
+                                    </HBox>
+
+                                    <HBox spacing="10.0">
+                                        <Button fx:id="btnAcceptRide" maxWidth="Infinity" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✓ Accept Ride" HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="btnDeclineRide" maxWidth="Infinity" style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✕ Decline" HBox.hgrow="ALWAYS" />
+                                    </HBox>
+
+                                    <Separator style="-fx-background-color: #374151;" />
+
+                                    <!-- OTP Verification Field for Active Ride -->
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <Label style="-fx-text-fill: #cbd5e1; -fx-font-size: 12px; -fx-font-weight: bold;" text="Enter Rider OTP:" />
+                                        <TextField fx:id="txtDriverOtpVerify" prefWidth="100.0" promptText="4-digits" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-padding: 6px; -fx-background-radius: 6px; -fx-border-color: #4b5563; -fx-border-radius: 6px;" />
+                                        <Button fx:id="btnVerifyOtpAndStart" style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6px 12px; -fx-background-radius: 6px; -fx-cursor: hand;" text="Start Ride" />
+                                    </HBox>
+                                </VBox>
+                            </VBox>
+                        </GridPane>
                     </VBox>
-                </VBox>
+                </ScrollPane>
             </Tab>
 
-            <!-- PORTAL 3: FLEET COMMAND & ADMIN (Port 8082) -->
-            <Tab fx:id="tabAdmin" text="🛡️ Fleet Command (Port 8082)">
-                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
-                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
-                        <Label style="-fx-font-size: 36px;" text="🛡️" />
-                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Fleet Operations Command Center" />
-                        <Label style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8082/admin/login" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Live Regional Operations Map, Chart.js 7-Day Revenue Trends, KYC Document Verifications, and Trip Operations Ledger." wrapText="true" />
-                        <HBox alignment="CENTER" spacing="12.0">
-                            <Button fx:id="btnLaunchAdmin" style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Fleet Admin in Browser" />
+            <!-- TAB 3: NATIVE FLEET OPERATIONS & ANALYTICS (PORT 8082) -->
+            <Tab fx:id="tabAdmin" text="🛡️ Fleet Command &amp; Analytics (Port 8082)">
+                <ScrollPane fitToHeight="true" fitToWidth="true" style="-fx-background: #0b0f19; -fx-border-color: transparent;">
+                    <VBox spacing="20.0" style="-fx-padding: 24px; -fx-background-color: #0b0f19;">
+                        <!-- Admin Header Banner -->
+                        <HBox alignment="CENTER_LEFT" spacing="16.0" style="-fx-background-color: #111827; -fx-padding: 16px 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;">
+                            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;" text="Fleet Operations Command Center" />
+                                <Label style="-fx-font-size: 12px; -fx-text-fill: #9ca3af;" text="Real-time multi-tier KPI monitoring, verification distributions, and capacity load charts." />
+                            </VBox>
+                            <Button fx:id="btnLaunchAdmin" style="-fx-background-color: #1f2937; -fx-text-fill: #f87171; -fx-font-weight: bold; -fx-padding: 8px 14px; -fx-background-radius: 8px; -fx-cursor: hand; -fx-border-color: #991b1b; -fx-border-radius: 8px;" text="↗ Open in Web Browser (8082)" />
                         </HBox>
+
+                        <!-- Top 4 KPI Metrics Cards -->
+                        <GridPane hgap="16.0" vgap="16.0">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="25.0" />
+                                <ColumnConstraints percentWidth="25.0" />
+                                <ColumnConstraints percentWidth="25.0" />
+                                <ColumnConstraints percentWidth="25.0" />
+                            </columnConstraints>
+
+                            <VBox spacing="4.0" style="-fx-background-color: #111827; -fx-padding: 16px; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px;" GridPane.columnIndex="0">
+                                <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: bold;" text="TOTAL REGISTERED DRIVERS" />
+                                <Label fx:id="lblKpiDrivers" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;" text="128" />
+                                <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px;" text="↑ 12% this week" />
+                            </VBox>
+
+                            <VBox spacing="4.0" style="-fx-background-color: #111827; -fx-padding: 16px; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px;" GridPane.columnIndex="1">
+                                <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: bold;" text="ACTIVE COMPLETED TRIPS" />
+                                <Label fx:id="lblKpiTrips" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #a78bfa;" text="1,492" />
+                                <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px;" text="99.4% completion rate" />
+                            </VBox>
+
+                            <VBox spacing="4.0" style="-fx-background-color: #111827; -fx-padding: 16px; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px;" GridPane.columnIndex="2">
+                                <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: bold;" text="PENDING VERIFICATIONS" />
+                                <Label fx:id="lblKpiPending" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #fbbf24;" text="1" />
+                                <Label style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" text="Requires admin review" />
+                            </VBox>
+
+                            <VBox spacing="4.0" style="-fx-background-color: #111827; -fx-padding: 16px; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px;" GridPane.columnIndex="3">
+                                <Label style="-fx-text-fill: #9ca3af; -fx-font-size: 11px; -fx-font-weight: bold;" text="TOTAL GROSS REVENUE" />
+                                <Label fx:id="lblKpiRevenue" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #34d399;" text="₹ 3,42,850" />
+                                <Label style="-fx-text-fill: #10b981; -fx-font-size: 11px;" text="Platform commission: 15%" />
+                            </VBox>
+                        </GridPane>
+
+                        <!-- Responsive 2-Chart Layout -->
+                        <GridPane hgap="20.0" vgap="20.0" VBox.vgrow="ALWAYS">
+                            <columnConstraints>
+                                <ColumnConstraints percentWidth="50.0" />
+                                <ColumnConstraints percentWidth="50.0" />
+                            </columnConstraints>
+
+                            <VBox minHeight="340.0" spacing="12.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="0" VBox.vgrow="ALWAYS">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Fleet Compliance Status Distribution" />
+                                <PieChart fx:id="fleetDistributionChart" legendVisible="true" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS" />
+                            </VBox>
+
+                            <VBox minHeight="340.0" spacing="12.0" style="-fx-background-color: #111827; -fx-padding: 20px; -fx-background-radius: 12px; -fx-border-color: #1f2937; -fx-border-radius: 12px;" GridPane.columnIndex="1" VBox.vgrow="ALWAYS">
+                                <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Fleet Capacity by Vehicle Tier" />
+                                <BarChart fx:id="bookingsBarChart" legendVisible="false" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+                                    <xAxis>
+                                        <CategoryAxis label="Vehicle Tier" tickLabelFill="#9ca3af" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis label="Fleet Units" tickLabelFill="#9ca3af" />
+                                    </yAxis>
+                                </BarChart>
+                            </VBox>
+                        </GridPane>
                     </VBox>
-                </VBox>
+                </ScrollPane>
             </Tab>
 
-            <!-- PORTAL 4: NATIVE DESKTOP DOCUMENT DOSSIER -->
-            <Tab text="📄 Compliance Dossier (Native Table &amp; Photos)">
-                <VBox spacing="14.0" style="-fx-background-color: #f8fafc; -fx-padding: 16px;">
-                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: white; -fx-padding: 12px; -fx-background-radius: 10px; -fx-border-color: #e2e8f0; -fx-border-radius: 10px;">
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Search:" />
-                        <TextField fx:id="searchField" prefWidth="250.0" promptText="Search name, license, plate, or car..." style="-fx-background-radius: 6px;" />
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Status:" />
-                        <ComboBox fx:id="statusFilterCombo" prefWidth="150.0" />
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Category:" />
-                        <ComboBox fx:id="categoryFilterCombo" prefWidth="150.0" />
+            <!-- TAB 4: COMPLIANCE DOSSIER & DOCUMENT INSPECTION -->
+            <Tab text="📄 Compliance Dossier (TableView &amp; Photos)">
+                <VBox spacing="14.0" style="-fx-background-color: #0b0f19; -fx-padding: 16px;">
+                    <!-- Filter Toolbar -->
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #111827; -fx-padding: 12px 16px; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px;">
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-font-size: 12px;" text="SEARCH:" />
+                        <TextField fx:id="searchField" prefWidth="260.0" promptText="Search name, license, plate, or car..." style="-fx-background-color: #1f2937; -fx-text-fill: white; -fx-prompt-text-fill: #6b7280; -fx-background-radius: 6px; -fx-border-color: #374151; -fx-border-radius: 6px;" />
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-font-size: 12px;" text="STATUS:" />
+                        <ComboBox fx:id="statusFilterCombo" prefWidth="150.0" style="-fx-background-color: #1f2937; -fx-border-color: #374151; -fx-border-radius: 6px;" />
+                        <Label style="-fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-font-size: 12px;" text="CATEGORY:" />
+                        <ComboBox fx:id="categoryFilterCombo" prefWidth="150.0" style="-fx-background-color: #1f2937; -fx-border-color: #374151; -fx-border-radius: 6px;" />
                         <Region HBox.hgrow="ALWAYS" />
                         <ProgressBar fx:id="actionProgressBar" prefWidth="120.0" visible="false" />
                     </HBox>
 
-                    <SplitPane dividerPositions="0.68" VBox.vgrow="ALWAYS">
-                        <VBox style="-fx-background-color: white; -fx-background-radius: 8px;">
-                            <TableView fx:id="driversTableView" VBox.vgrow="ALWAYS">
+                    <!-- SplitPane with responsive constraints -->
+                    <SplitPane dividerPositions="0.65" style="-fx-background-color: transparent; -fx-box-border: transparent;" VBox.vgrow="ALWAYS">
+                        <!-- Table Column -->
+                        <VBox minWidth="400.0" style="-fx-background-color: #111827; -fx-background-radius: 10px; -fx-border-color: #1f2937; -fx-border-radius: 10px; -fx-padding: 8px;">
+                            <TableView fx:id="driversTableView" style="-fx-background-color: #111827;" VBox.vgrow="ALWAYS">
                                 <columns>
                                     <TableColumn fx:id="colDriverId" prefWidth="85.0" text="Driver ID" />
-                                    <TableColumn fx:id="colDriverName" prefWidth="120.0" text="Driver Name" />
+                                    <TableColumn fx:id="colDriverName" prefWidth="130.0" text="Driver Name" />
                                     <TableColumn fx:id="colLicense" prefWidth="120.0" text="License Plate" />
                                     <TableColumn fx:id="colCategory" prefWidth="75.0" text="Category" />
                                     <TableColumn fx:id="colVehicleModel" prefWidth="130.0" text="Vehicle Model" />
@@ -110,52 +341,35 @@
                                     <TableColumn fx:id="colStatus" prefWidth="95.0" text="Status" />
                                     <TableColumn fx:id="colRating" prefWidth="65.0" text="Rating" />
                                 </columns>
+                                <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                </columnResizePolicy>
                             </TableView>
                         </VBox>
 
-                        <VBox spacing="12.0" style="-fx-background-color: white; -fx-padding: 16px; -fx-border-color: #e2e8f0;">
-                            <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Driver &amp; Vehicle Compliance Dossier" />
-                            <HBox alignment="CENTER" style="-fx-padding: 8px; -fx-background-color: #f1f5f9; -fx-background-radius: 10px;">
-                                <ImageView fx:id="driverPhotoView" fitHeight="130.0" fitWidth="130.0" pickOnBounds="true" preserveRatio="true" />
+                        <!-- Document Details & Photo Inspection Card -->
+                        <VBox minWidth="320.0" spacing="14.0" style="-fx-background-color: #111827; -fx-padding: 18px; -fx-border-color: #1f2937; -fx-border-radius: 10px; -fx-background-radius: 10px;">
+                            <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;" text="Driver &amp; Vehicle Compliance Dossier" />
+                            <HBox alignment="CENTER" style="-fx-padding: 10px; -fx-background-color: #1f2937; -fx-background-radius: 10px; -fx-border-color: #374151; -fx-border-radius: 10px;">
+                                <ImageView fx:id="driverPhotoView" fitHeight="140.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true" />
                             </HBox>
                             <VBox spacing="6.0">
-                                <Label fx:id="selectedDriverLabel" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" text="Select a driver from the table" />
-                                <Label fx:id="selectedPlateLabel" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" text="Vehicle Details" />
+                                <Label fx:id="selectedDriverLabel" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f3f4f6;" text="Select a driver from the table" />
+                                <Label fx:id="selectedPlateLabel" style="-fx-text-fill: #9ca3af; -fx-font-size: 12px;" text="Vehicle Details" />
                                 <HBox spacing="8.0">
-                                    <Label style="-fx-font-weight: bold;" text="Current Status:" />
-                                    <Label fx:id="selectedStatusLabel" style="-fx-font-weight: bold; -fx-text-fill: #2563eb;" text="N/A" />
+                                    <Label style="-fx-font-weight: bold; -fx-text-fill: #cbd5e1; -fx-font-size: 12px;" text="Current Status:" />
+                                    <Label fx:id="selectedStatusLabel" style="-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 12px;" text="N/A" />
                                 </HBox>
-                                <Label fx:id="statusNoteLabel" style="-fx-text-fill: #475569; -fx-font-size: 12px;" text="Select driver to inspect Cloudinary-stored documents." wrapText="true" />
+                                <Label fx:id="statusNoteLabel" style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;" text="Select driver to inspect Cloudinary-stored documents." wrapText="true" />
                             </VBox>
                             <Region VBox.vgrow="ALWAYS" />
                             <VBox spacing="8.0">
-                                <Button fx:id="approveButton" maxWidth="Infinity" style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✅ Approve Driver &amp; Vehicle" />
-                                <Button fx:id="rejectButton" maxWidth="Infinity" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="❌ Reject with Feedback" />
+                                <Button fx:id="approveButton" maxWidth="Infinity" style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✓ Approve Driver &amp; Vehicle" />
+                                <Button fx:id="rejectButton" maxWidth="Infinity" style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✕ Reject with Feedback" />
                             </VBox>
                         </VBox>
                     </SplitPane>
                 </VBox>
-            </Tab>
-
-            <!-- TAB 5: DESKTOP CHARTS -->
-            <Tab text="📊 Fleet Analytics">
-                <HBox spacing="16.0" style="-fx-background-color: #f8fafc; -fx-padding: 20px;">
-                    <VBox style="-fx-background-color: white; -fx-background-radius: 12px; -fx-padding: 16px; -fx-border-color: #e2e8f0;" HBox.hgrow="ALWAYS">
-                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Fleet Verification Distribution" />
-                        <PieChart fx:id="fleetDistributionChart" VBox.vgrow="ALWAYS" />
-                    </VBox>
-                    <VBox style="-fx-background-color: white; -fx-background-radius: 12px; -fx-padding: 16px; -fx-border-color: #e2e8f0;" HBox.hgrow="ALWAYS">
-                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Vehicle Category Capacity" />
-                        <BarChart fx:id="bookingsBarChart" VBox.vgrow="ALWAYS">
-                            <xAxis>
-                                <CategoryAxis label="Vehicle Category" />
-                            </xAxis>
-                            <yAxis>
-                                <NumberAxis label="Active Fleet Count" />
-                            </yAxis>
-                        </BarChart>
-                    </VBox>
-                </HBox>
             </Tab>
 
         </TabPane>

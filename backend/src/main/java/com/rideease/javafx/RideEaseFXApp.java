@@ -5,16 +5,16 @@ import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 /**
- * RideEase JavaFX Desktop Administrative & Fleet Management Application
- * Features rich Java Event Handling:
- * - ActionEvent handlers on interactive controls (verification approval, rejection, filters)
- * - MouseEvent click/double-click handlers on TableView rows to inspect driver Cloudinary documents
- * - ChangeListener and Property bindings for dynamic real-time search & status filtering
- * - Background Task worker threads for network and database operations with setOnSucceeded / setOnFailed
+ * RideEase Unified JavaFX Desktop Dispatch & Operations Application
+ * Features:
+ * - Tab 1: Rider Booking Console (Port 8080 simulation)
+ * - Tab 2: Driver Partner Terminal (Port 8081 simulation)
+ * - Tab 3: Fleet Operations & Analytics (Port 8082 simulation)
+ * - Tab 4: Compliance Dossier & KYC Document Inspection
+ * - Responsive layout containers that adapt to all monitor aspect ratios.
  */
 public class RideEaseFXApp extends Application {
 
@@ -23,16 +23,16 @@ public class RideEaseFXApp extends Application {
     @Override
     public void start(Stage stage) {
         primaryStage = stage;
-        primaryStage.setTitle("RideEase Fleet & Verification Command Center (JavaFX Desktop)");
+        primaryStage.setTitle("RideEase Unified Command Console (JavaFX Desktop)");
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/javafx/MainConsoleView.fxml"));
             Parent root = loader.load();
 
-            Scene scene = new Scene(root, 1100, 720);
+            Scene scene = new Scene(root, 1200, 800);
             primaryStage.setScene(scene);
-            primaryStage.setMinWidth(950);
-            primaryStage.setMinHeight(600);
+            primaryStage.setMinWidth(960);
+            primaryStage.setMinHeight(650);
 
             primaryStage.setOnCloseRequest(event -> {
                 Platform.exit();
@@ -40,8 +40,9 @@ public class RideEaseFXApp extends Application {
             });
 
             primaryStage.show();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ex) {
+            System.err.println("CRITICAL: Failed to bootstrap JavaFX Dispatch Console: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
