@@ -16,8 +16,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
 
 import java.awt.Desktop;
 import java.net.URI;
@@ -26,25 +24,18 @@ import java.util.ResourceBundle;
 
 /**
  * Enhanced Multi-Portal JavaFX Command Center Controller
- * Controls:
- * 1. Embedded WebViews for Port 8080 (Rider), 8081 (Driver), 8082 (Fleet Admin)
- * 2. Native TableView Document Verification & KYC Previews
- * 3. Charts and Analytics
- * 4. Browser launching and portal reload actions
+ * Provides:
+ * 1. Dedicated Portal Tabs with direct Browser Launchers for Port 8080 (Rider), 8081 (Driver), 8082 (Fleet Admin)
+ * 2. Native TableView Document Verification & KYC Previews (Photo & Details)
+ * 3. Reactive Search, Filters, and Status Updates
+ * 4. Desktop Analytics Charts (PieChart & BarChart)
  */
 public class MainConsoleController implements Initializable {
 
-    // --- Embedded Portal WebViews ---
-    @FXML private TabPane mainTabPane;
-    @FXML private Tab tabRider;
-    @FXML private Tab tabDriver;
-    @FXML private Tab tabAdmin;
-    @FXML private WebView riderWebView;
-    @FXML private WebView driverWebView;
-    @FXML private WebView adminWebView;
-
-    @FXML private Button reloadActiveTabButton;
-    @FXML private Button openBrowserButton;
+    // --- Portal Action Buttons ---
+    @FXML private Button btnLaunchRider;
+    @FXML private Button btnLaunchDriver;
+    @FXML private Button btnLaunchAdmin;
 
     // --- Native Table & Compliance Controls ---
     @FXML private TableView<DriverTableItem> driversTableView;
@@ -85,7 +76,7 @@ public class MainConsoleController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        initPortalWebViews();
+        initPortalLaunchers();
         setupTableColumns();
         setupFiltersAndData();
         setupEventHandlers();
@@ -93,66 +84,27 @@ public class MainConsoleController implements Initializable {
         setupCharts();
     }
 
-    /**
-     * Initializes embedded WebKit WebViews for Port 8080, 8081, and 8082
-     */
-    private void initPortalWebViews() {
-        if (riderWebView != null) {
-            WebEngine engine = riderWebView.getEngine();
-            engine.setJavaScriptEnabled(true);
-            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
-            engine.load(RIDER_URL);
+    private void initPortalLaunchers() {
+        if (btnLaunchRider != null) {
+            btnLaunchRider.setOnAction(e -> openUrl(RIDER_URL));
         }
-
-        if (driverWebView != null) {
-            WebEngine engine = driverWebView.getEngine();
-            engine.setJavaScriptEnabled(true);
-            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
-            engine.load(DRIVER_URL);
+        if (btnLaunchDriver != null) {
+            btnLaunchDriver.setOnAction(e -> openUrl(DRIVER_URL));
         }
-
-        if (adminWebView != null) {
-            WebEngine engine = adminWebView.getEngine();
-            engine.setJavaScriptEnabled(true);
-            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
-            engine.load(ADMIN_URL);
-        }
-
-        if (reloadActiveTabButton != null) {
-            reloadActiveTabButton.setOnAction(e -> reloadActivePortal());
-        }
-
-        if (openBrowserButton != null) {
-            openBrowserButton.setOnAction(e -> openActivePortalInSystemBrowser());
+        if (btnLaunchAdmin != null) {
+            btnLaunchAdmin.setOnAction(e -> openUrl(ADMIN_URL));
         }
     }
 
-    private void reloadActivePortal() {
-        Tab currentTab = mainTabPane.getSelectionModel().getSelectedItem();
-        if (currentTab == tabRider && riderWebView != null) {
-            riderWebView.getEngine().reload();
-        } else if (currentTab == tabDriver && driverWebView != null) {
-            driverWebView.getEngine().reload();
-        } else if (currentTab == tabAdmin && adminWebView != null) {
-            adminWebView.getEngine().reload();
-        } else {
-            loadDemoFleetData();
-            updateCharts();
-        }
-    }
-
-    private void openActivePortalInSystemBrowser() {
-        Tab currentTab = mainTabPane.getSelectionModel().getSelectedItem();
-        String url = RIDER_URL;
-        if (currentTab == tabDriver) url = DRIVER_URL;
-        else if (currentTab == tabAdmin) url = ADMIN_URL;
-
+    private void openUrl(String url) {
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
+            } else {
+                Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + url);
             }
         } catch (Exception ex) {
-            System.err.println("Failed to open browser: " + ex.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Browser Launch Error", "Could not open browser for: " + url + "\n" + ex.getMessage());
         }
     }
 

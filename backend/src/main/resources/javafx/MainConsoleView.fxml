@@ -20,70 +20,72 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.web.WebView?>
 
-<BorderPane prefHeight="820.0" prefWidth="1280.0" style="-fx-background-color: #0f172a; -fx-font-family: 'Segoe UI', sans-serif;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.rideease.javafx.controller.MainConsoleController">
+<BorderPane prefHeight="780.0" prefWidth="1180.0" style="-fx-background-color: #0f172a; -fx-font-family: 'Segoe UI', sans-serif;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.rideease.javafx.controller.MainConsoleController">
     <!-- Top Header -->
     <top>
-        <VBox style="-fx-background-color: #0f172a; -fx-padding: 12px 24px; -fx-border-color: #1e293b; -fx-border-width: 0 0 1px 0;">
+        <VBox style="-fx-background-color: #0f172a; -fx-padding: 14px 24px; -fx-border-color: #1e293b; -fx-border-width: 0 0 1px 0;">
             <HBox alignment="CENTER_LEFT" spacing="16.0">
                 <Label style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;" text="RideEase Unified Command Console" />
                 <Label style="-fx-background-color: #1e293b; -fx-text-fill: #38bdf8; -fx-padding: 4px 10px; -fx-background-radius: 12px; -fx-font-size: 11px; -fx-font-weight: bold;" text="All Ports JavaFX Desktop" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button fx:id="reloadActiveTabButton" style="-fx-background-color: #334155; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px; -fx-padding: 6px 14px; -fx-cursor: hand;" text="🔄 Reload Active Portal" />
-                <Button fx:id="openBrowserButton" style="-fx-background-color: #1e293b; -fx-text-fill: #94a3b8; -fx-border-color: #334155; -fx-border-radius: 8px; -fx-background-radius: 8px; -fx-padding: 6px 14px; -fx-cursor: hand;" text="🌐 Open in Chrome / Browser" />
                 <Button fx:id="refreshButton" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8px; -fx-padding: 6px 14px; -fx-cursor: hand;" text="⚡ Refresh Database" />
             </HBox>
         </VBox>
     </top>
 
-    <!-- Center Content: 4 Comprehensive Tabs -->
+    <!-- Center Content: All 3 Portals + Compliance & Analytics Tabs -->
     <center>
         <TabPane fx:id="mainTabPane" style="-fx-background-color: #0f172a;" tabClosingPolicy="UNAVAILABLE">
             
             <!-- PORTAL 1: PASSENGER / RIDER (Port 8080) -->
             <Tab fx:id="tabRider" text="🚗 Rider Portal (Port 8080)">
-                <VBox style="-fx-background-color: #f8fafc;">
-                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #ffffff; -fx-padding: 8px 16px; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1px 0;">
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 12px;" text="Target Gateway:" />
-                        <Label style="-fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8080/" />
-                        <Region HBox.hgrow="ALWAYS" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 11px;" text="Interactive Leaflet GPS Map, Live OSRM Routes, Tiered Cabs &amp; Ride Tracking" />
-                    </HBox>
-                    <WebView fx:id="riderWebView" VBox.vgrow="ALWAYS" />
+                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
+                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
+                        <Label style="-fx-font-size: 36px;" text="🚗" />
+                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Passenger / Rider Portal" />
+                        <Label style="-fx-background-color: #e0e7ff; -fx-text-fill: #4338ca; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8080/" />
+                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Interactive Leaflet GPS Map, Live OSRM Road Routes, Tiered Vehicle Selection, Scheduled Bookings, and Trip Tracking." wrapText="true" />
+                        <HBox alignment="CENTER" spacing="12.0">
+                            <Button fx:id="btnLaunchRider" style="-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Rider Portal in Browser" />
+                        </HBox>
+                    </VBox>
                 </VBox>
             </Tab>
 
             <!-- PORTAL 2: DRIVER PARTNER TERMINAL (Port 8081) -->
             <Tab fx:id="tabDriver" text="🚕 Driver Terminal (Port 8081)">
-                <VBox style="-fx-background-color: #f8fafc;">
-                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #ffffff; -fx-padding: 8px 16px; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1px 0;">
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 12px;" text="Target Gateway:" />
-                        <Label style="-fx-text-fill: #059669; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8081/driver/dashboard" />
-                        <Region HBox.hgrow="ALWAYS" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 11px;" text="Duty Online Toggle, Incoming Request Cards, Dual-Leg OSRM Navigation &amp; Payment Settlement" />
-                    </HBox>
-                    <WebView fx:id="driverWebView" VBox.vgrow="ALWAYS" />
+                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
+                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
+                        <Label style="-fx-font-size: 36px;" text="🚕" />
+                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Driver Partner Hub" />
+                        <Label style="-fx-background-color: #d1fae5; -fx-text-fill: #065f46; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8081/driver/login" />
+                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Duty Online/Offline Switch, 15s Countdown Request Cards, Dual-Leg OSRM Navigation, Rider 4-digit OTP Verification, and Payment Settlement." wrapText="true" />
+                        <HBox alignment="CENTER" spacing="12.0">
+                            <Button fx:id="btnLaunchDriver" style="-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Driver Terminal in Browser" />
+                        </HBox>
+                    </VBox>
                 </VBox>
             </Tab>
 
             <!-- PORTAL 3: FLEET COMMAND & ADMIN (Port 8082) -->
             <Tab fx:id="tabAdmin" text="🛡️ Fleet Command (Port 8082)">
-                <VBox style="-fx-background-color: #f8fafc;">
-                    <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: #ffffff; -fx-padding: 8px 16px; -fx-border-color: #e2e8f0; -fx-border-width: 0 0 1px 0;">
-                        <Label style="-fx-font-weight: bold; -fx-text-fill: #1e293b; -fx-font-size: 12px;" text="Target Gateway:" />
-                        <Label style="-fx-text-fill: #dc2626; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8082/admin/dashboard" />
-                        <Region HBox.hgrow="ALWAYS" />
-                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 11px;" text="Live Regional Operations Map, 7-Day Chart.js Revenue Trends &amp; Trip Operations Ledger" />
-                    </HBox>
-                    <WebView fx:id="adminWebView" VBox.vgrow="ALWAYS" />
+                <VBox alignment="CENTER" spacing="20.0" style="-fx-background-color: #f8fafc; -fx-padding: 40px;">
+                    <VBox alignment="CENTER" maxWidth="680.0" spacing="16.0" style="-fx-background-color: white; -fx-padding: 32px; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 16, 0, 0, 4); -fx-border-color: #e2e8f0; -fx-border-radius: 16px;">
+                        <Label style="-fx-font-size: 36px;" text="🛡️" />
+                        <Label style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Fleet Operations Command Center" />
+                        <Label style="-fx-background-color: #fee2e2; -fx-text-fill: #991b1b; -fx-padding: 4px 12px; -fx-background-radius: 12px; -fx-font-weight: bold; -fx-font-family: monospace;" text="http://localhost:8082/admin/login" />
+                        <Label style="-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-text-alignment: center;" text="Live Regional Operations Map, Chart.js 7-Day Revenue Trends, KYC Document Verifications, and Trip Operations Ledger." wrapText="true" />
+                        <HBox alignment="CENTER" spacing="12.0">
+                            <Button fx:id="btnLaunchAdmin" style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 10px 24px; -fx-background-radius: 8px; -fx-cursor: hand;" text="🚀 Launch Fleet Admin in Browser" />
+                        </HBox>
+                    </VBox>
                 </VBox>
             </Tab>
 
-            <!-- PORTAL 4: NATIVE DESKTOP DOCUMENT DOSSIER & ANALYTICS -->
-            <Tab text="📄 Compliance Dossier (Native Table &amp; Charts)">
+            <!-- PORTAL 4: NATIVE DESKTOP DOCUMENT DOSSIER -->
+            <Tab text="📄 Compliance Dossier (Native Table &amp; Photos)">
                 <VBox spacing="14.0" style="-fx-background-color: #f8fafc; -fx-padding: 16px;">
-                    <!-- Filter and Search Bar -->
                     <HBox alignment="CENTER_LEFT" spacing="12.0" style="-fx-background-color: white; -fx-padding: 12px; -fx-background-radius: 10px; -fx-border-color: #e2e8f0; -fx-border-radius: 10px;">
                         <Label style="-fx-font-weight: bold; -fx-text-fill: #475569;" text="Search:" />
                         <TextField fx:id="searchField" prefWidth="250.0" promptText="Search name, license, plate, or car..." style="-fx-background-radius: 6px;" />
@@ -95,9 +97,7 @@
                         <ProgressBar fx:id="actionProgressBar" prefWidth="120.0" visible="false" />
                     </HBox>
 
-                    <!-- Split View: Table on Left, Cloudinary Document Inspector on Right -->
                     <SplitPane dividerPositions="0.68" VBox.vgrow="ALWAYS">
-                        <!-- TableView of Drivers -->
                         <VBox style="-fx-background-color: white; -fx-background-radius: 8px;">
                             <TableView fx:id="driversTableView" VBox.vgrow="ALWAYS">
                                 <columns>
@@ -113,14 +113,11 @@
                             </TableView>
                         </VBox>
 
-                        <!-- Document & Photo Inspection Panel -->
                         <VBox spacing="12.0" style="-fx-background-color: white; -fx-padding: 16px; -fx-border-color: #e2e8f0;">
                             <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Driver &amp; Vehicle Compliance Dossier" />
-                            
                             <HBox alignment="CENTER" style="-fx-padding: 8px; -fx-background-color: #f1f5f9; -fx-background-radius: 10px;">
                                 <ImageView fx:id="driverPhotoView" fitHeight="130.0" fitWidth="130.0" pickOnBounds="true" preserveRatio="true" />
                             </HBox>
-
                             <VBox spacing="6.0">
                                 <Label fx:id="selectedDriverLabel" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1e293b;" text="Select a driver from the table" />
                                 <Label fx:id="selectedPlateLabel" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" text="Vehicle Details" />
@@ -130,10 +127,7 @@
                                 </HBox>
                                 <Label fx:id="statusNoteLabel" style="-fx-text-fill: #475569; -fx-font-size: 12px;" text="Select driver to inspect Cloudinary-stored documents." wrapText="true" />
                             </VBox>
-
                             <Region VBox.vgrow="ALWAYS" />
-
-                            <!-- Action Buttons with Event Handlers -->
                             <VBox spacing="8.0">
                                 <Button fx:id="approveButton" maxWidth="Infinity" style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="✅ Approve Driver &amp; Vehicle" />
                                 <Button fx:id="rejectButton" maxWidth="Infinity" style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10px; -fx-background-radius: 8px; -fx-cursor: hand;" text="❌ Reject with Feedback" />

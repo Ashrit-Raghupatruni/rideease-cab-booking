@@ -9,5 +9,5 @@ echo     [Tab 3] Fleet Operations Admin (Port 8082)
 echo     [Tab 4] Compliance Dossier (TableView & KYC Previews)
 echo ========================================================
 cd /d "%~dp0backend"
-mvn exec:java -Dexec.mainClass="com.rideease.javafx.RideEaseFXApp"
+mvn javafx:run
 pause
