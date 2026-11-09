@@ -52,6 +52,7 @@ public class DriverTableItem {
     public StringProperty licenseNumberProperty() { return licenseNumber; }
 
     public String getVehicleCategory() { return vehicleCategory.get(); }
+    public String getCategory() { return vehicleCategory.get(); }
     public StringProperty vehicleCategoryProperty() { return vehicleCategory; }
 
     public String getVehicleModel() { return vehicleModel.get(); }

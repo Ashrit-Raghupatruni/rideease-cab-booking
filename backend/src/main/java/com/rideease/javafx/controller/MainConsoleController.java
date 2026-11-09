@@ -7,8 +7,6 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.chart.BarChart;
@@ -18,24 +16,37 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.VBox;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.net.URL;
 import java.util.ResourceBundle;
 
 /**
- * Rich Event-Handling Controller for RideEase JavaFX Command Console
- * Implements:
- * 1. ActionEvent handlers (Buttons for Approve, Reject, Refresh, Database Sync)
- * 2. MouseEvent handlers (Row click/selection to view driver photo and documents from Cloudinary)
- * 3. ChangeListener & Property Bindings (Dynamic real-time table search and category filtering)
- * 4. Chart Tooltip & Slice Event Handlers
- * 5. Background Task concurrency with setOnSucceeded / setOnFailed event callbacks
+ * Enhanced Multi-Portal JavaFX Command Center Controller
+ * Controls:
+ * 1. Embedded WebViews for Port 8080 (Rider), 8081 (Driver), 8082 (Fleet Admin)
+ * 2. Native TableView Document Verification & KYC Previews
+ * 3. Charts and Analytics
+ * 4. Browser launching and portal reload actions
  */
 public class MainConsoleController implements Initializable {
 
-    // --- FXML UI Controls ---
+    // --- Embedded Portal WebViews ---
+    @FXML private TabPane mainTabPane;
+    @FXML private Tab tabRider;
+    @FXML private Tab tabDriver;
+    @FXML private Tab tabAdmin;
+    @FXML private WebView riderWebView;
+    @FXML private WebView driverWebView;
+    @FXML private WebView adminWebView;
+
+    @FXML private Button reloadActiveTabButton;
+    @FXML private Button openBrowserButton;
+
+    // --- Native Table & Compliance Controls ---
     @FXML private TableView<DriverTableItem> driversTableView;
     @FXML private TableColumn<DriverTableItem, String> colDriverId;
     @FXML private TableColumn<DriverTableItem, String> colDriverName;
@@ -68,8 +79,13 @@ public class MainConsoleController implements Initializable {
     private final ObservableList<DriverTableItem> masterDriverData = FXCollections.observableArrayList();
     private FilteredList<DriverTableItem> filteredData;
 
+    private static final String RIDER_URL = "http://localhost:8080/";
+    private static final String DRIVER_URL = "http://localhost:8081/driver/login";
+    private static final String ADMIN_URL = "http://localhost:8082/admin/login";
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        initPortalWebViews();
         setupTableColumns();
         setupFiltersAndData();
         setupEventHandlers();
@@ -77,32 +93,94 @@ public class MainConsoleController implements Initializable {
         setupCharts();
     }
 
+    /**
+     * Initializes embedded WebKit WebViews for Port 8080, 8081, and 8082
+     */
+    private void initPortalWebViews() {
+        if (riderWebView != null) {
+            WebEngine engine = riderWebView.getEngine();
+            engine.setJavaScriptEnabled(true);
+            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
+            engine.load(RIDER_URL);
+        }
+
+        if (driverWebView != null) {
+            WebEngine engine = driverWebView.getEngine();
+            engine.setJavaScriptEnabled(true);
+            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
+            engine.load(DRIVER_URL);
+        }
+
+        if (adminWebView != null) {
+            WebEngine engine = adminWebView.getEngine();
+            engine.setJavaScriptEnabled(true);
+            engine.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 RideEase-Desktop");
+            engine.load(ADMIN_URL);
+        }
+
+        if (reloadActiveTabButton != null) {
+            reloadActiveTabButton.setOnAction(e -> reloadActivePortal());
+        }
+
+        if (openBrowserButton != null) {
+            openBrowserButton.setOnAction(e -> openActivePortalInSystemBrowser());
+        }
+    }
+
+    private void reloadActivePortal() {
+        Tab currentTab = mainTabPane.getSelectionModel().getSelectedItem();
+        if (currentTab == tabRider && riderWebView != null) {
+            riderWebView.getEngine().reload();
+        } else if (currentTab == tabDriver && driverWebView != null) {
+            driverWebView.getEngine().reload();
+        } else if (currentTab == tabAdmin && adminWebView != null) {
+            adminWebView.getEngine().reload();
+        } else {
+            loadDemoFleetData();
+            updateCharts();
+        }
+    }
+
+    private void openActivePortalInSystemBrowser() {
+        Tab currentTab = mainTabPane.getSelectionModel().getSelectedItem();
+        String url = RIDER_URL;
+        if (currentTab == tabDriver) url = DRIVER_URL;
+        else if (currentTab == tabAdmin) url = ADMIN_URL;
+
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(new URI(url));
+            }
+        } catch (Exception ex) {
+            System.err.println("Failed to open browser: " + ex.getMessage());
+        }
+    }
+
     private void setupTableColumns() {
         colDriverId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colDriverName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colLicense.setCellValueFactory(new PropertyValueFactory<>("licenseNumber"));
-        colCategory.setCellValueFactory(new PropertyValueFactory<>("vehicleCategory"));
+        colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
         colVehicleModel.setCellValueFactory(new PropertyValueFactory<>("vehicleModel"));
         colPlate.setCellValueFactory(new PropertyValueFactory<>("registrationNumber"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("verificationStatus"));
         colRating.setCellValueFactory(new PropertyValueFactory<>("rating"));
 
-        // Status column badge styling
         colStatus.setCellFactory(column -> new TableCell<>() {
             @Override
-            protected void updateItem(String status, boolean empty) {
-                super.updateItem(status, empty);
-                if (empty || status == null) {
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
                     setText(null);
                     setStyle("");
                 } else {
-                    setText(status);
-                    if ("APPROVED".equalsIgnoreCase(status)) {
+                    setText(item);
+                    if ("APPROVED".equalsIgnoreCase(item)) {
                         setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold;");
-                    } else if ("PENDING".equalsIgnoreCase(status)) {
-                        setStyle("-fx-text-fill: #ca8a04; -fx-font-weight: bold;");
-                    } else {
+                    } else if ("REJECTED".equalsIgnoreCase(item)) {
                         setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
+                    } else {
+                        setStyle("-fx-text-fill: #d97706; -fx-font-weight: bold;");
                     }
                 }
             }
@@ -110,81 +188,74 @@ public class MainConsoleController implements Initializable {
     }
 
     private void setupFiltersAndData() {
-        statusFilterCombo.getItems().addAll("ALL STATUSES", "PENDING", "APPROVED", "REJECTED");
-        statusFilterCombo.setValue("ALL STATUSES");
+        statusFilterCombo.setItems(FXCollections.observableArrayList("ALL STATUSES", "PENDING", "APPROVED", "REJECTED"));
+        statusFilterCombo.getSelectionModel().selectFirst();
 
-        categoryFilterCombo.getItems().addAll("ALL CATEGORIES", "MINI", "SEDAN", "SUV");
-        categoryFilterCombo.setValue("ALL CATEGORIES");
+        categoryFilterCombo.setItems(FXCollections.observableArrayList("ALL CATEGORIES", "MINI", "SEDAN", "SUV"));
+        categoryFilterCombo.getSelectionModel().selectFirst();
 
         filteredData = new FilteredList<>(masterDriverData, p -> true);
 
-        // Event Handling: ChangeListener for dynamic search query
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> applyPredicates());
-
-        // Event Handling: ChangeListener for dropdowns
-        statusFilterCombo.valueProperty().addListener((observable, oldValue, newValue) -> applyPredicates());
-        categoryFilterCombo.valueProperty().addListener((observable, oldValue, newValue) -> applyPredicates());
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilterPredicates());
+        statusFilterCombo.valueProperty().addListener((obs, oldVal, newVal) -> applyFilterPredicates());
+        categoryFilterCombo.valueProperty().addListener((obs, oldVal, newVal) -> applyFilterPredicates());
 
         SortedList<DriverTableItem> sortedData = new SortedList<>(filteredData);
         sortedData.comparatorProperty().bind(driversTableView.comparatorProperty());
         driversTableView.setItems(sortedData);
     }
 
-    private void applyPredicates() {
+    private void applyFilterPredicates() {
         filteredData.setPredicate(driver -> {
-            String query = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
-            String status = statusFilterCombo.getValue();
-            String category = categoryFilterCombo.getValue();
+            String searchText = searchField.getText();
+            boolean matchesSearch = true;
+            if (searchText != null && !searchText.trim().isEmpty()) {
+                String lower = searchText.toLowerCase().trim();
+                matchesSearch = driver.getName().toLowerCase().contains(lower)
+                        || driver.getLicenseNumber().toLowerCase().contains(lower)
+                        || driver.getRegistrationNumber().toLowerCase().contains(lower)
+                        || driver.getVehicleModel().toLowerCase().contains(lower);
+            }
 
-            boolean matchesSearch = query.isEmpty() ||
-                    driver.getName().toLowerCase().contains(query) ||
-                    driver.getLicenseNumber().toLowerCase().contains(query) ||
-                    driver.getRegistrationNumber().toLowerCase().contains(query) ||
-                    driver.getVehicleModel().toLowerCase().contains(query);
+            String selectedStatus = statusFilterCombo.getValue();
+            boolean matchesStatus = true;
+            if (selectedStatus != null && !"ALL STATUSES".equalsIgnoreCase(selectedStatus)) {
+                matchesStatus = selectedStatus.equalsIgnoreCase(driver.getVerificationStatus());
+            }
 
-            boolean matchesStatus = "ALL STATUSES".equalsIgnoreCase(status) ||
-                    driver.getVerificationStatus().equalsIgnoreCase(status);
-
-            boolean matchesCategory = "ALL CATEGORIES".equalsIgnoreCase(category) ||
-                    driver.getVehicleCategory().equalsIgnoreCase(category);
+            String selectedCategory = categoryFilterCombo.getValue();
+            boolean matchesCategory = true;
+            if (selectedCategory != null && !"ALL CATEGORIES".equalsIgnoreCase(selectedCategory)) {
+                matchesCategory = selectedCategory.equalsIgnoreCase(driver.getCategory());
+            }
 
             return matchesSearch && matchesStatus && matchesCategory;
         });
     }
 
     private void setupEventHandlers() {
-        // Event Handling: MouseEvent selection on TableView
-        driversTableView.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent event) {
-                DriverTableItem selected = driversTableView.getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    displayDriverDetails(selected);
-                }
+        driversTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
+            if (newSel != null) {
+                displayDriverDetails(newSel);
             }
         });
 
-        // Event Handling: ActionEvent on Approve Button
-        approveButton.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                DriverTableItem selected = driversTableView.getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    performVerificationAction(selected, "APPROVED");
-                } else {
-                    showAlert(Alert.AlertType.WARNING, "Selection Required", "Please select a driver from the table.");
-                }
+        approveButton.setOnAction(event -> {
+            DriverTableItem selected = driversTableView.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                performVerificationAction(selected, "APPROVED");
+            } else {
+                showAlert(Alert.AlertType.WARNING, "Selection Required", "Please select a driver from the table.");
             }
         });
 
-        // Event Handling: ActionEvent on Reject Button
         rejectButton.setOnAction(event -> {
             DriverTableItem selected = driversTableView.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                TextInputDialog dialog = new TextInputDialog("Missing or blurred RC scan");
+                TextInputDialog dialog = new TextInputDialog("Blurred RC book / expired insurance");
                 dialog.setTitle("Reject Driver Verification");
-                dialog.setHeaderText("Reason for rejecting driver " + selected.getName());
-                dialog.setContentText("Rejection Notice:");
+                dialog.setHeaderText("Specify rejection reason for " + selected.getName() + ":");
+                dialog.setContentText("Reason:");
                 dialog.showAndWait().ifPresent(reason -> {
                     performVerificationAction(selected, "REJECTED");
                     statusNoteLabel.setText("Rejected: " + reason);
@@ -194,7 +265,6 @@ public class MainConsoleController implements Initializable {
             }
         });
 
-        // Event Handling: ActionEvent on Refresh Button
         refreshButton.setOnAction(event -> {
             loadDemoFleetData();
             updateCharts();
@@ -208,7 +278,6 @@ public class MainConsoleController implements Initializable {
         selectedStatusLabel.setText(driver.getVerificationStatus());
         statusNoteLabel.setText("License: " + driver.getLicenseNumber() + " | Rating: " + driver.getRating() + "★");
 
-        // Load image from Cloudinary or default avatar
         try {
             if (driver.getPhotoUrl() != null && !driver.getPhotoUrl().isEmpty() && driver.getPhotoUrl().startsWith("http")) {
                 driverPhotoView.setImage(new Image(driver.getPhotoUrl(), true));
@@ -220,17 +289,13 @@ public class MainConsoleController implements Initializable {
         }
     }
 
-    /**
-     * Executes async Task with rich event handlers (setOnSucceeded, setOnFailed)
-     */
     private void performVerificationAction(DriverTableItem item, String newStatus) {
         actionProgressBar.setVisible(true);
 
         Task<Void> verificationTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
-                // Simulating database transaction / REST call
-                Thread.sleep(600);
+                Thread.sleep(400);
                 return null;
             }
         };
@@ -255,37 +320,15 @@ public class MainConsoleController implements Initializable {
 
     private void loadDemoFleetData() {
         masterDriverData.clear();
-        masterDriverData.add(new DriverTableItem(
-                "DRV-001", "Ramesh Kumar", "AP39-2018-00124", "SEDAN",
-                "Maruti Dzire", "AP 16 TC 4589", "APPROVED",
-                "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-                "https://example.com/rc1.pdf", "https://example.com/ins1.pdf", "https://example.com/fit1.pdf",
-                4.9, 142
-        ));
-        masterDriverData.add(new DriverTableItem(
-                "DRV-002", "Suresh Varma", "AP16-2021-99412", "MINI",
-                "Tata Tiago", "AP 16 BD 7891", "PENDING",
-                "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
-                "https://example.com/rc2.pdf", "https://example.com/ins2.pdf", "https://example.com/fit2.pdf",
-                5.0, 0
-        ));
-        masterDriverData.add(new DriverTableItem(
-                "DRV-003", "Kishore Reddy", "AP09-2019-33821", "SUV",
-                "Toyota Innova Crysta", "AP 09 CX 1102", "APPROVED",
-                "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150",
-                "https://example.com/rc3.pdf", "https://example.com/ins3.pdf", "https://example.com/fit3.pdf",
-                4.8, 89
-        ));
-        masterDriverData.add(new DriverTableItem(
-                "DRV-004", "Venkat Rao", "AP31-2022-77114", "MINI",
-                "Hyundai i10", "AP 31 EK 6542", "REJECTED",
-                null, null, null, null,
-                4.5, 12
-        ));
-
+        masterDriverData.addAll(
+                new DriverTableItem("DRV-001", "Ramesh Kumar", "AP39-2018-00124", "SEDAN", "Maruti Dzire", "AP 16 TC 4589", "APPROVED", "https://res.cloudinary.com/demo/image/upload/sample.jpg", "https://res.cloudinary.com/demo/image/upload/sample.jpg", "https://res.cloudinary.com/demo/image/upload/sample.jpg", "https://res.cloudinary.com/demo/image/upload/sample.jpg", 4.9, 12),
+                new DriverTableItem("DRV-002", "Suresh Varma", "AP16-2021-99412", "MINI", "Tata Tiago", "AP 16 BD 7891", "PENDING", "https://res.cloudinary.com/demo/image/upload/avatar.jpg", null, null, null, 4.7, 5),
+                new DriverTableItem("DRV-003", "Kishore Reddy", "AP09-2019-33821", "SUV", "Toyota Innova Crysta", "AP 09 CX 1102", "APPROVED", "https://res.cloudinary.com/demo/image/upload/sample.jpg", "https://res.cloudinary.com/demo/image/upload/sample.jpg", null, null, 5.0, 24),
+                new DriverTableItem("DRV-004", "Venkat Rao", "AP31-2022-77114", "MINI", "Hyundai i10", "AP 31 EK 6542", "REJECTED", null, null, null, null, 4.2, 0)
+        );
         if (!masterDriverData.isEmpty()) {
+            driversTableView.getSelectionModel().selectFirst();
             displayDriverDetails(masterDriverData.get(0));
-            driversTableView.getSelectionModel().select(0);
         }
     }
 
@@ -294,38 +337,28 @@ public class MainConsoleController implements Initializable {
     }
 
     private void updateCharts() {
-        // 1. PieChart: Fleet Distribution
-        long approvedCount = masterDriverData.stream().filter(d -> "APPROVED".equalsIgnoreCase(d.getVerificationStatus())).count();
-        long pendingCount = masterDriverData.stream().filter(d -> "PENDING".equalsIgnoreCase(d.getVerificationStatus())).count();
-        long rejectedCount = masterDriverData.stream().filter(d -> "REJECTED".equalsIgnoreCase(d.getVerificationStatus())).count();
+        long approved = masterDriverData.stream().filter(d -> "APPROVED".equalsIgnoreCase(d.getVerificationStatus())).count();
+        long pending = masterDriverData.stream().filter(d -> "PENDING".equalsIgnoreCase(d.getVerificationStatus())).count();
+        long rejected = masterDriverData.stream().filter(d -> "REJECTED".equalsIgnoreCase(d.getVerificationStatus())).count();
 
         ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList(
-                new PieChart.Data("Approved (" + approvedCount + ")", approvedCount),
-                new PieChart.Data("Pending (" + pendingCount + ")", pendingCount),
-                new PieChart.Data("Rejected (" + rejectedCount + ")", rejectedCount)
+                new PieChart.Data("Approved (" + approved + ")", approved),
+                new PieChart.Data("Pending (" + pending + ")", pending),
+                new PieChart.Data("Rejected (" + rejected + ")", rejected)
         );
         fleetDistributionChart.setData(pieData);
 
-        // Event Handling: Tooltip & Mouse hover on PieChart Slices
-        for (PieChart.Data data : fleetDistributionChart.getData()) {
-            Tooltip tooltip = new Tooltip(data.getName() + ": " + (int) data.getPieValue());
-            Tooltip.install(data.getNode(), tooltip);
-            data.getNode().setOnMouseEntered(e -> data.getNode().setStyle("-fx-cursor: hand; -fx-opacity: 0.85;"));
-            data.getNode().setOnMouseExited(e -> data.getNode().setStyle("-fx-opacity: 1.0;"));
-        }
-
-        // 2. BarChart: Vehicle Category Distribution
         bookingsBarChart.getData().clear();
         XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Fleet Capacity");
+        series.setName("Registered Vehicles");
 
-        long miniCount = masterDriverData.stream().filter(d -> "MINI".equalsIgnoreCase(d.getVehicleCategory())).count();
-        long sedanCount = masterDriverData.stream().filter(d -> "SEDAN".equalsIgnoreCase(d.getVehicleCategory())).count();
-        long suvCount = masterDriverData.stream().filter(d -> "SUV".equalsIgnoreCase(d.getVehicleCategory())).count();
+        long miniCount = masterDriverData.stream().filter(d -> "MINI".equalsIgnoreCase(d.getCategory())).count();
+        long sedanCount = masterDriverData.stream().filter(d -> "SEDAN".equalsIgnoreCase(d.getCategory())).count();
+        long suvCount = masterDriverData.stream().filter(d -> "SUV".equalsIgnoreCase(d.getCategory())).count();
 
-        series.getData().add(new XYChart.Data<>("Mini", miniCount));
-        series.getData().add(new XYChart.Data<>("Sedan", sedanCount));
-        series.getData().add(new XYChart.Data<>("SUV XL", suvCount));
+        series.getData().add(new XYChart.Data<>("MINI", miniCount));
+        series.getData().add(new XYChart.Data<>("SEDAN", sedanCount));
+        series.getData().add(new XYChart.Data<>("SUV", suvCount));
 
         bookingsBarChart.getData().add(series);
     }
