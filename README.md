@@ -44,14 +44,19 @@ RideEase operates with a dedicated **3-port isolation architecture** hosted on a
   - **Property Bindings & ChangeListeners:** Real-time reactive filtering across names, license plates, and vehicle categories.
   - **Concurrency Tasks:** Background asynchronous worker threads (`javafx.concurrent.Task`) with `setOnSucceeded` and `setOnFailed` event listeners.
 
-### 4. 🗺️ Dual-Leg OSRM Route Visualization & Telemetry
+### 4. 🗺️ Dual-Phase OSRM Route Navigation & Live Telemetry
 - **Accurate Device Geolocation:** Both Rider and Driver interfaces request device GPS permissions with high accuracy (`enableHighAccuracy: true`).
 - **Nearby Driver Discovery:** Displays the count and live map markers of available captains nearby.
-- **Dual-Leg Trajectory:**
-  - **Leg 1 (Dashed Amber Line):** Driver location to User Pickup point.
-  - **Leg 2 (Solid Indigo Line):** User Pickup point to Destination Dropoff.
+- **Dual-Phase Navigation Flow:**
+  - **Phase 1 (Navigation to Pickup):** Once a ride is accepted (`ACCEPTED`), the driver terminal map focuses on the navigation route from the driver's current position to the passenger's pickup location, with a top turn-by-turn instruction banner and Google Maps GPS navigation link.
+  - **Arrival & OTP Verification (`ARRIVING`):** When within 75 meters of the pickup spot, the system notifies both parties. The driver terminal prompts for the passenger's 4-digit OTP.
+  - **Phase 2 (Navigation to Destination):** Upon verifying the OTP (`IN_PROGRESS`), the pickup route clears, and the map automatically navigates to the passenger's destination with remaining ETA and the "Complete Trip" settlement action.
+- **Movable & Expandable Bottom Sheets:**
+  - Floating sheets in Rider, Driver, and Tracking panels are movable and support drag/click expansion (`Expanded`, `Default`, and `Minimized` states) with guaranteed minimum height to eliminate content shrinkage.
+- **Emergency Drop Ride Option:** Drivers can drop active trips directly from the HUD if an emergency arises, instantly releasing the vehicle back to available status.
+- **Live Cancellation Synchronization:** Cancellations triggered from Rider, Driver, or Admin panels update instantaneously across all connected screens via WebSockets without page locking.
 - **Targeted Driver Telemetry Update:**
-  - For `driver@gmail.com`: Position automatically advances towards the passenger every **2 seconds** for live demonstration.
+  - For `driver@gmail.com`: Position automatically advances towards the destination every **2 seconds** for live demonstration.
   - For all other drivers: Real-time device GPS is streamed continuously via `watchPosition`.
 
 ---
