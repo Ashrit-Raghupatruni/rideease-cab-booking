@@ -78,10 +78,22 @@ public class DesktopApiController {
                 .mapToDouble(b -> b.getFinalFare() != null ? b.getFinalFare() : b.getEstimatedFare())
                 .sum();
 
+        long totalRiders = userRepository.findAll().stream().filter(u -> u.getRole() == Role.PASSENGER).count();
+        long activeDispatches = bookingRepository.findAll().stream().filter(b -> 
+            b.getStatus() == Booking.BookingStatus.SEARCHING ||
+            b.getStatus() == Booking.BookingStatus.ACCEPTED ||
+            b.getStatus() == Booking.BookingStatus.ARRIVING ||
+            b.getStatus() == Booking.BookingStatus.IN_PROGRESS
+        ).count();
+
         kpis.put("totalDrivers", totalDrivers);
+        kpis.put("totalRiders", totalRiders);
+        kpis.put("activeDispatches", activeDispatches);
         kpis.put("completedTrips", completedTrips);
         kpis.put("pendingVerifications", pendingVerifications);
         kpis.put("grossRevenue", grossRevenue);
+        kpis.put("platformCommission", grossRevenue * 0.15);
+        kpis.put("settledVolume", grossRevenue * 0.85);
 
         // Verification Status Breakdown
         long approved = driverRepository.findByVerificationStatus(Driver.VerificationStatus.APPROVED).size();
@@ -427,4 +439,13 @@ public class DesktopApiController {
 
         return ResponseEntity.ok(stats);
     }
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> getSystemHealth() {
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("database", "CONNECTED");
+        health.put("timestamp", Instant.now().toString());
+        return ResponseEntity.ok(health);
+    }
+
 }

@@ -39,7 +39,7 @@
                     <VBox spacing="1.0">
                         <HBox alignment="CENTER_LEFT" spacing="8.0">
                             <Label style="-fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: white;" text="RideEase" />
-                            <Label style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2px 8px; -fx-background-radius: 10px;" text="Toury Edition" />
+                            <Label style="-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2px 8px; -fx-background-radius: 10px;" text="Unified Edition" />
                         </HBox>
                         <Label style="-fx-font-size: 11px; -fx-text-fill: #e0e7ff;" text="Multi-Port Native Dispatch &amp; Command Center" />
                     </VBox>
@@ -49,11 +49,11 @@
                 
                 <!-- Web Port Status Badges -->
                 <HBox alignment="CENTER" spacing="8.0" style="-fx-background-color: rgba(15, 23, 42, 0.25); -fx-padding: 5px 14px; -fx-background-radius: 20px;">
-                    <Label style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8080 Rider" />
+                    <Label fx:id="lblStatus8080" style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8080 Rider" />
                     <Label style="-fx-text-fill: rgba(255,255,255,0.4); -fx-font-size: 11px;" text="|" />
-                    <Label style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8081 Driver" />
+                    <Label fx:id="lblStatus8081" style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8081 Driver" />
                     <Label style="-fx-text-fill: rgba(255,255,255,0.4); -fx-font-size: 11px;" text="|" />
-                    <Label style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8082 Admin" />
+                    <Label fx:id="lblStatus8082" style="-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" text="● 8082 Admin" />
                 </HBox>
                 
                 <Button fx:id="refreshButton" style="-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-background-radius: 20px; -fx-padding: 6px 16px; -fx-cursor: hand;" text="↻ Refresh System" />
@@ -276,7 +276,7 @@
                         <!-- Header Banner -->
                         <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="toury-card" style="-fx-padding: 16px 20px; -fx-border-left-color: #dc2626; -fx-border-left-width: 4px;">
                             <VBox spacing="3.0" HBox.hgrow="ALWAYS">
-                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Toury Fleet Operations Command Center" />
+                                <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="RideEase Fleet Operations Command Center" />
                                 <Label style="-fx-font-size: 12px; -fx-text-fill: #64748b;" text="Real-time multi-tier KPI monitoring, verification distributions, and capacity load charts." />
                             </VBox>
                             <Button fx:id="btnLaunchAdmin" style="-fx-background-color: #f1f5f9; -fx-text-fill: #991b1b; -fx-font-weight: bold; -fx-padding: 8px 14px; -fx-background-radius: 8px; -fx-cursor: hand; -fx-border-color: #cbd5e1; -fx-border-radius: 8px;" text="↗ Launch in Web Browser (8082)" />

@@ -29,6 +29,7 @@ import java.awt.Desktop;
 import java.net.URI;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Enterprise Multi-Portal JavaFX Controller
@@ -49,6 +50,9 @@ public class MainConsoleController implements Initializable {
     @FXML private Button btnLaunchDriver;
     @FXML private Button btnLaunchAdmin;
     @FXML private Button refreshButton;
+    @FXML private Label lblStatus8080;
+    @FXML private Label lblStatus8081;
+    @FXML private Label lblStatus8082;
 
     // --- Rider Interactive Controls ---
     @FXML private TextField txtRiderPickup;
@@ -137,6 +141,7 @@ public class MainConsoleController implements Initializable {
         setupMicroAnimations();
         initMapCanvas();
         startNearbyScanningTimer();
+        startHealthCheckTimer();
 
         // Connect STOMP WebSocket
         stompClient.connect();
@@ -838,4 +843,66 @@ public class MainConsoleController implements Initializable {
         scanTimer.play();
     }
 
+
+    private void startHealthCheckTimer() {
+        pingServices();
+        Timeline healthTimer = new Timeline(new KeyFrame(Duration.seconds(5), ev -> pingServices()));
+        healthTimer.setCycleCount(Timeline.INDEFINITE);
+        healthTimer.play();
+    }
+
+    private void pingServices() {
+        // Port 8080 Rider & API
+        apiClient.getAsync("/api/desktop/health", new TypeReference<Map<String, Object>>() {})
+                .thenAccept(res -> Platform.runLater(() -> {
+                    if (lblStatus8080 != null) {
+                        lblStatus8080.setText("● 8080 Rider (OK)");
+                        lblStatus8080.setStyle("-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;");
+                    }
+                }))
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> {
+                        if (lblStatus8080 != null) {
+                            lblStatus8080.setText("● 8080 Rider (Offline)");
+                            lblStatus8080.setStyle("-fx-text-fill: #f87171; -fx-font-size: 11px; -fx-font-weight: bold;");
+                        }
+                    });
+                    return null;
+                });
+
+        // Port 8081 Driver
+        CompletableFuture.runAsync(() -> {
+            boolean ok = checkHttp("http://localhost:8081/driver/login");
+            Platform.runLater(() -> {
+                if (lblStatus8081 != null) {
+                    lblStatus8081.setText(ok ? "● 8081 Driver (OK)" : "● 8081 Driver (Offline)");
+                    lblStatus8081.setStyle(ok ? "-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" : "-fx-text-fill: #f87171; -fx-font-size: 11px; -fx-font-weight: bold;");
+                }
+            });
+        });
+
+        // Port 8082 Admin
+        CompletableFuture.runAsync(() -> {
+            boolean ok = checkHttp("http://localhost:8082/admin/login");
+            Platform.runLater(() -> {
+                if (lblStatus8082 != null) {
+                    lblStatus8082.setText(ok ? "● 8082 Admin (OK)" : "● 8082 Admin (Offline)");
+                    lblStatus8082.setStyle(ok ? "-fx-text-fill: #34d399; -fx-font-size: 11px; -fx-font-weight: bold;" : "-fx-text-fill: #f87171; -fx-font-size: 11px; -fx-font-weight: bold;");
+                }
+            });
+        });
+    }
+
+    private boolean checkHttp(String urlStr) {
+        try {
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(urlStr).openConnection();
+            conn.setConnectTimeout(1500);
+            conn.setReadTimeout(1500);
+            conn.setRequestMethod("GET");
+            int code = conn.getResponseCode();
+            return code >= 200 && code < 500;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }
