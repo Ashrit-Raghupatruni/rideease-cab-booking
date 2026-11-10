@@ -532,7 +532,16 @@
         }
 
         function handleCompleteTripClick() {
+            // If GPS is unavailable or still initializing, ask for driver confirmation modal
             if (!dropPos || !driverPos) {
+                const modalEl = document.getElementById('earlyCompletionModal');
+                if (modalEl && typeof bootstrap !== 'undefined') {
+                    document.getElementById('earlyDistanceText').innerHTML = 
+                        `<strong>Arrival Check:</strong> Please confirm you have safely dropped the passenger at destination.`;
+                    earlyModalInstance = new bootstrap.Modal(modalEl);
+                    earlyModalInstance.show();
+                    return;
+                }
                 document.getElementById('completeTripForm').submit();
                 return;
             }
@@ -625,7 +634,16 @@
                     // 1. Subscribe to Incoming Ride Requests (Real-time Broadcast without page reload)
                     driverStompClient.subscribe('/topic/drivers/requests', function (message) {
                         const newReq = JSON.parse(message.body);
-                        console.log("[Driver STOMP] Incoming Ride Request:", newReq);
+                        console.log("[Driver STOMP] Driver Request Event:", newReq);
+
+                        if (newReq.action === 'CANCEL_REQUEST' || newReq.status === 'CANCELLED') {
+                            if (window.showRideToast) {
+                                window.showRideToast("Incoming ride was cancelled by user.", "warning", "bi-x-circle");
+                            }
+                            // Immediately reload workspace to dismiss incoming card or active trip
+                            setTimeout(() => { window.location.reload(); }, 500);
+                            return;
+                        }
 
                         if (window.showRideToast) {
                             window.showRideToast(`New Ride Request! ${newReq.pickupAddress} (₹${newReq.fare})`, "success", "bi-taxi-front");

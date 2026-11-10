@@ -66,6 +66,10 @@ public class MainConsoleController implements Initializable {
     @FXML private Button btnBookRide;
     @FXML private Button btnCancelRide;
     @FXML private VBox cardRideLifecycle;
+    @FXML private javafx.scene.canvas.Canvas routeMapCanvas;
+    @FXML private Label lblMapScanningStatus;
+    @FXML private javafx.scene.layout.HBox boxOtpContainer;
+    @FXML private Button btnSosEmergency;
 
     // --- Driver Interactive Controls ---
     @FXML private Label lblDriverDutyStatus;
@@ -131,6 +135,8 @@ public class MainConsoleController implements Initializable {
         initDossierTable();
         initAnalyticsCharts();
         setupMicroAnimations();
+        initMapCanvas();
+        startNearbyScanningTimer();
 
         // Connect STOMP WebSocket
         stompClient.connect();
@@ -288,6 +294,11 @@ public class MainConsoleController implements Initializable {
                         this.currentActiveBookingId = (String) resp.get("bookingId");
                         String otp = (String) resp.get("otp");
                         if (lblRiderOtp != null) lblRiderOtp.setText(otp != null ? otp : "----");
+                        // Strictly hide OTP during searching state! Only show upon driver acceptance.
+                        if (boxOtpContainer != null) {
+                            boxOtpContainer.setVisible(false);
+                            boxOtpContainer.setManaged(false);
+                        }
 
                         // Subscribe to this specific booking topic
                         stompClient.subscribe("/topic/ride/" + currentActiveBookingId + "/status", statusPayload -> {
@@ -313,6 +324,19 @@ public class MainConsoleController implements Initializable {
             if ("ACCEPTED".equalsIgnoreCase(status)) {
                 lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #16a34a; -fx-font-size: 13px;");
                 if (lblAssignedDriver != null) lblAssignedDriver.setText("Assigned Captain: " + (driverId != null ? driverId : "En Route") + " • 3 mins away");
+                // Reveal OTP to Rider upon driver acceptance!
+                if (boxOtpContainer != null) {
+                    boxOtpContainer.setVisible(true);
+                    boxOtpContainer.setManaged(true);
+                    animatePulse(boxOtpContainer);
+                }
+            } else if ("CANCELLED".equalsIgnoreCase(status)) {
+                lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #dc2626; -fx-font-size: 13px;");
+                if (lblAssignedDriver != null) lblAssignedDriver.setText("Ride was cancelled. Enter pickup & destination to book again.");
+                if (boxOtpContainer != null) {
+                    boxOtpContainer.setVisible(false);
+                    boxOtpContainer.setManaged(false);
+                }
             } else if ("IN_PROGRESS".equalsIgnoreCase(status)) {
                 lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #0284c7; -fx-font-size: 13px;");
                 if (lblAssignedDriver != null) lblAssignedDriver.setText("Trip in progress towards destination.");

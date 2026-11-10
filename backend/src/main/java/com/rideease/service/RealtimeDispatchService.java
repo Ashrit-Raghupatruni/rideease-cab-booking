@@ -101,4 +101,14 @@ public class RealtimeDispatchService {
     public void purgeTelemetry(String bookingId) {
         lastKnownTelemetry.remove(bookingId);
     }
+    public void broadcastCancelToDrivers(String bookingId, String message) {
+        Map<String, Object> cancelEvent = new HashMap<>();
+        cancelEvent.put("bookingId", bookingId);
+        cancelEvent.put("status", "CANCELLED");
+        cancelEvent.put("action", "CANCEL_REQUEST");
+        cancelEvent.put("message", message != null ? message : "Ride cancelled");
+        messagingTemplate.convertAndSend("/topic/drivers/requests", cancelEvent);
+        log.info("Broadcasted cancellation for booking {} to /topic/drivers/requests", bookingId);
+    }
+
 }

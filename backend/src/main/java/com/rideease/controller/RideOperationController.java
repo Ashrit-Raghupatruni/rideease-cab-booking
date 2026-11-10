@@ -127,7 +127,7 @@ public class RideOperationController {
                 booking.setScheduled(true);
                 booking.setScheduledTime(scheduledInstant);
                 // If scheduled for more than 20 minutes in the future, mark as SCHEDULED
-                if (scheduledInstant.isAfter(Instant.now().plus(java.time.Duration.ofMinutes(20)))) {
+                if (scheduledInstant.isAfter(Instant.now().plus(java.time.Duration.ofMinutes(2)))) {
                     booking.setStatus(Booking.BookingStatus.SCHEDULED);
                 }
                 log.info("Ride scheduled for future timestamp: {} (Status: {})", scheduledInstant, booking.getStatus());
@@ -481,6 +481,7 @@ public class RideOperationController {
                 }
 
                 realtimeDispatchService.broadcastBookingStatus(booking, "Ride was cancelled by " + role);
+                realtimeDispatchService.broadcastCancelToDrivers(bookingId, "Ride was cancelled by " + role);
                 realtimeDispatchService.purgeTelemetry(bookingId);
                 log.info("Booking {} cancelled by role {}", bookingId, role);
             }
