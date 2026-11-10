@@ -358,18 +358,32 @@ public class DesktopApiController {
         }
 
         if (driver != null) {
-            b.setDriverId(driver.getId());
+            b.setDriverId(driver.getUserId() != null ? driver.getUserId() : driver.getId());
             b.setStatus(Booking.BookingStatus.ACCEPTED);
             bookingRepository.save(b);
             realtimeDispatchService.broadcastBookingStatus(b, "Driver accepted ride dispatch.");
             resp.put("status", "SUCCESS");
             resp.put("driverId", driver.getId());
             resp.put("bookingStatus", "ACCEPTED");
+            resp.put("otp", b.getOtp());
             return ResponseEntity.ok(resp);
         }
 
         resp.put("status", "NO_DRIVERS");
         return ResponseEntity.badRequest().body(resp);
+    }
+
+    @GetMapping("/booking/status")
+    public ResponseEntity<Map<String, Object>> getBookingStatus(@RequestParam("bookingId") String bookingId) {
+        Optional<Booking> opt = bookingRepository.findById(bookingId);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        Booking b = opt.get();
+        Map<String, Object> res = new HashMap<>();
+        res.put("bookingId", b.getId());
+        res.put("status", b.getStatus().name());
+        res.put("otp", b.getOtp());
+        res.put("driverId", b.getDriverId());
+        return ResponseEntity.ok(res);
     }
 
     @PostMapping("/driver/verify-otp")

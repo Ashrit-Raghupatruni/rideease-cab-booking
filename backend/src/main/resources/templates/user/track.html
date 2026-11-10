@@ -426,6 +426,22 @@
             }
         }
 
+        // Fast Fallback Status Poller if WebSocket transition packet is delayed
+        if (bookingStatus === 'SEARCHING' || bookingStatus === 'REQUESTED') {
+            const statusPollTimer = setInterval(function() {
+                fetch('/api/desktop/booking/status?bookingId=' + bookingId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data && data.status && data.status !== 'SEARCHING' && data.status !== 'REQUESTED') {
+                            clearInterval(statusPollTimer);
+                            console.log("[Status Poll] Detected transition to:", data.status);
+                            window.location.reload();
+                        }
+                    })
+                    .catch(function(err) { /* silent */ });
+            }, 2000);
+        }
+
         connectTrackingWebSocket();
         /*]]>*/
     </script>
