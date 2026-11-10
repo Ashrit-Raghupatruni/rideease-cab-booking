@@ -3,6 +3,7 @@ package com.rideease.javafx.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.rideease.javafx.model.DriverTableItem;
 import com.rideease.javafx.service.ApiClient;
+import com.rideease.javafx.util.OsmTileRenderer;
 import com.rideease.javafx.service.StompWebSocketClient;
 import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
@@ -957,103 +958,44 @@ public class MainConsoleController implements Initializable {
 
     private void drawVisualRouteMap(double distanceKm) {
         if (routeMapCanvas == null) return;
-        javafx.scene.canvas.GraphicsContext gc = routeMapCanvas.getGraphicsContext2D();
-        double w = routeMapCanvas.getWidth();
-        double h = routeMapCanvas.getHeight();
+        String pName = txtRiderPickup != null && !txtRiderPickup.getText().trim().isEmpty() ? txtRiderPickup.getText().trim() : "SRM AP";
+        String dName = txtRiderDrop != null && !txtRiderDrop.getText().trim().isEmpty() ? txtRiderDrop.getText().trim() : "AIIMS Hospital";
 
-        gc.clearRect(0, 0, w, h);
+        OsmTileRenderer.renderOsmMap(
+                routeMapCanvas.getGraphicsContext2D(),
+                routeMapCanvas.getWidth(),
+                routeMapCanvas.getHeight(),
+                currentPickupLat, currentPickupLon,
+                currentDropLat, currentDropLon,
+                pName, dName,
+                distanceKm,
+                "PICKUP",
+                () -> drawVisualRouteMap(distanceKm)
+        );
+    }
 
-        // 1. Sleek Navigation Cartography Base (#0f172a Deep Slate)
-        gc.setFill(Color.web("#0f172a"));
-        gc.fillRoundRect(0, 0, w, h, 12, 12);
+    private void drawDriverRouteMap(String phase, double distanceKm) {
+        if (routeMapCanvasDriver == null) return;
+        String pName = "Pickup Spot";
+        String dName = "Destination";
 
-        // 2. Waterways & Coastal Features (Krishna River / Bay water body accents)
-        gc.setFill(Color.web("#1e293b"));
-        gc.beginPath();
-        gc.moveTo(0, h * 0.15);
-        gc.bezierCurveTo(w * 0.3, h * 0.35, w * 0.6, h * 0.05, w, h * 0.25);
-        gc.lineTo(w, 0);
-        gc.lineTo(0, 0);
-        gc.closePath();
-        gc.fill();
+        OsmTileRenderer.renderOsmMap(
+                routeMapCanvasDriver.getGraphicsContext2D(),
+                routeMapCanvasDriver.getWidth(),
+                routeMapCanvasDriver.getHeight(),
+                currentPickupLat, currentPickupLon,
+                currentDropLat, currentDropLon,
+                pName, dName,
+                distanceKm,
+                phase,
+                () -> drawDriverRouteMap(phase, distanceKm)
+        );
 
-        // 3. Arterial Road Grid & Expressways
-        gc.setStroke(Color.web("#334155"));
-        gc.setLineWidth(1.2);
-        for (double x = 30; x < w; x += 55) gc.strokeLine(x, 0, x, h);
-        for (double y = 25; y < h; y += 40) gc.strokeLine(0, y, w, y);
-
-        // Highway corridors (Amaravati - Mangalagiri Expressway / NH16 bypass)
-        gc.setStroke(Color.web("#475569"));
-        gc.setLineWidth(3.0);
-        gc.strokeLine(0, h * 0.78, w, h * 0.38);
-        gc.strokeLine(w * 0.25, 0, w * 0.72, h);
-
-        // 4. Glow Underlay for Active OSRM Route
-        gc.setStroke(Color.web("#6366f1", 0.45));
-        gc.setLineWidth(10.0);
-        gc.beginPath();
-        gc.moveTo(65, h - 45);
-        gc.bezierCurveTo(w * 0.32, h - 95, w * 0.62, 35, w - 75, 45);
-        gc.stroke();
-
-        // 5. Main OSRM Route Polyline
-        gc.setStroke(Color.web("#818cf8"));
-        gc.setLineWidth(4.5);
-        gc.beginPath();
-        gc.moveTo(65, h - 45);
-        gc.bezierCurveTo(w * 0.32, h - 95, w * 0.62, 35, w - 75, 45);
-        gc.stroke();
-
-        // 6. Route Metadata Overlay Label
-        gc.setFill(Color.web("#ffffff", 0.9));
-        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
-        String routeLabel = String.format(Locale.US, "OSRM DRIVING • %.1f km (14 mins)", distanceKm);
-        gc.fillText(routeLabel, 16, 22);
-
-        // 7. Pickup Landmark & Marker (Green 'P')
-        gc.setFill(Color.web("#10b981"));
-        gc.fillOval(52, h - 58, 26, 26);
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2.5);
-        gc.strokeOval(52, h - 58, 26, 26);
-        gc.setFill(Color.WHITE);
-        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 12));
-        gc.fillText("P", 61, h - 41);
-
-        gc.setFill(Color.web("#34d399"));
-        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
-        String pLabel = txtRiderPickup != null && !txtRiderPickup.getText().trim().isEmpty() ? txtRiderPickup.getText().trim() : "SRM AP";
-        if (pLabel.length() > 22) pLabel = pLabel.substring(0, 20) + "..";
-        gc.fillText(pLabel, 84, h - 42);
-
-        // 8. Destination Landmark & Marker (Red 'D')
-        gc.setFill(Color.web("#ef4444"));
-        gc.fillOval(w - 88, 32, 26, 26);
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2.5);
-        gc.strokeOval(w - 88, 32, 26, 26);
-        gc.setFill(Color.WHITE);
-        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 12));
-        gc.fillText("D", w - 79, 49);
-
-        gc.setFill(Color.web("#f87171"));
-        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
-        String dLabel = txtRiderDrop != null && !txtRiderDrop.getText().trim().isEmpty() ? txtRiderDrop.getText().trim() : "AIIMS";
-        if (dLabel.length() > 22) dLabel = dLabel.substring(0, 20) + "..";
-        gc.fillText(dLabel, w - 190, 49);
-
-        // 9. Moving Live Vehicle Indicator (Taxi Badge)
-        double carX = w * 0.46;
-        double carY = h * 0.44;
-        gc.setFill(Color.web("#22c55e"));
-        gc.fillOval(carX - 16, carY - 16, 32, 32);
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(2.0);
-        gc.strokeOval(carX - 16, carY - 16, 32, 32);
-        gc.setFill(Color.WHITE);
-        gc.setFont(javafx.scene.text.Font.font("System", 16));
-        gc.fillText("🚕", carX - 10, carY + 6);
+        if (lblDriverNavPhase != null) {
+            boolean isPickup = "PICKUP".equalsIgnoreCase(phase);
+            lblDriverNavPhase.setText(isPickup ? "● Phase 1: Navigation to Pickup" : "● Phase 2: Navigation to Destination");
+            lblDriverNavPhase.setStyle(isPickup ? "-fx-font-size: 11px; -fx-text-fill: #d97706; -fx-font-weight: bold;" : "-fx-font-size: 11px; -fx-text-fill: #4338ca; -fx-font-weight: bold;");
+        }
     }
 
     private void startNearbyScanningTimer() {
@@ -1186,53 +1128,6 @@ public class MainConsoleController implements Initializable {
         dispatchPollTimer.play();
     }
 
-    private void drawDriverRouteMap(String phase, double distanceKm) {
-        if (routeMapCanvasDriver == null) return;
-        javafx.scene.canvas.GraphicsContext gc = routeMapCanvasDriver.getGraphicsContext2D();
-        double w = routeMapCanvasDriver.getWidth();
-        double h = routeMapCanvasDriver.getHeight();
 
-        gc.clearRect(0, 0, w, h);
-
-        // Background terrain / road grid
-        gc.setFill(javafx.scene.paint.Color.web("#f1f5f9"));
-        gc.fillRect(0, 0, w, h);
-
-        // Draw arterial road grid lines
-        gc.setStroke(javafx.scene.paint.Color.web("#e2e8f0"));
-        gc.setLineWidth(1.5);
-        for (double x = 20; x < w; x += 40) gc.strokeLine(x, 0, x, h);
-        for (double y = 20; y < h; y += 30) gc.strokeLine(0, y, w, y);
-
-        boolean isPickup = "PICKUP".equalsIgnoreCase(phase);
-        String trackColor = isPickup ? "#f59e0b" : "#4f46e5";
-
-        // Draw curved navigation track
-        gc.setStroke(javafx.scene.paint.Color.web(trackColor));
-        gc.setLineWidth(5.0);
-        gc.beginPath();
-        gc.moveTo(50, h - 35);
-        gc.bezierCurveTo(150, h - 90, 270, 25, w - 60, 45);
-        gc.stroke();
-
-        // Start point Pin (Driver position)
-        gc.setFill(javafx.scene.paint.Color.web("#059669"));
-        gc.fillOval(42, h - 45, 22, 22);
-        gc.setFill(javafx.scene.paint.Color.WHITE);
-        gc.fillText("🚕", 46, h - 28);
-
-        // End point Pin (Pickup or Destination)
-        String endPinColor = isPickup ? "#10b981" : "#ef4444";
-        String endPinLetter = isPickup ? "P" : "D";
-        gc.setFill(javafx.scene.paint.Color.web(endPinColor));
-        gc.fillOval(w - 70, 35, 22, 22);
-        gc.setFill(javafx.scene.paint.Color.WHITE);
-        gc.fillText(endPinLetter, w - 63, 51);
-
-        if (lblDriverNavPhase != null) {
-            lblDriverNavPhase.setText(isPickup ? "● Phase 1: Navigation to Pickup" : "● Phase 2: Navigation to Destination");
-            lblDriverNavPhase.setStyle(isPickup ? "-fx-font-size: 11px; -fx-text-fill: #d97706; -fx-font-weight: bold;" : "-fx-font-size: 11px; -fx-text-fill: #4338ca; -fx-font-weight: bold;");
-        }
-    }
 
 }
