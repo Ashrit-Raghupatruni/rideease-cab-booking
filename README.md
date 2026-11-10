@@ -1,25 +1,25 @@
-# RideEase ("Toury" Edition) — Online Cab Booking Platform
+# RideEase (Unified Edition) — Online Cab Booking Platform
 
-A full-stack, enterprise-grade multi-portal online cab booking application built with **Java 17/21, Spring Boot 3.2.5, Spring Data JPA / Hibernate, MySQL 8.0, JavaFX Desktop Console, Cloudinary Media CDN, Thymeleaf, and WebSocket STOMP**.
+A full-stack, enterprise-grade multi-portal online cab booking and dispatch application built with **Java 17/21, Spring Boot 3.2.5, Spring Data JPA / Hibernate, MySQL 8.0, JavaFX 21 Desktop Console, Cloudinary Media CDN, Thymeleaf, and WebSocket STOMP**.
 
 ---
 
 ## 🏛️ System Architecture
 
-RideEase operates with a dedicated **3-port isolation architecture** hosted on an embedded Tomcat multi-connector server, along with a standalone **JavaFX Desktop Administrative & Fleet Console**:
+RideEase operates with a dedicated **3-port isolation architecture** hosted on an embedded Tomcat multi-connector server, along with a standalone **JavaFX Desktop Administrative & Fleet Console** (`RideEaseFXApp`):
 
 | Role / Portal | Port | Direct URL | Responsibilities |
 |---|---|---|---|
 | **Passenger / Rider** | **`8080`** | [http://localhost:8080/](http://localhost:8080/) | Fullscreen Leaflet map, draggable floating bottom sheet, OSRM road routing, device GPS location accuracy, nearby driver availability count & map pins, saved places, tiered vehicle selection (Mini, Sedan, SUV XL), live WebSocket tracking, 24/7 Safety Centre with emergency SOS, scheduled bookings, and downloadable tax receipts. |
-| **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Map-first partner terminal, online/offline duty switch, real-time incoming request countdown card, atomic ride acceptance, start trip OTP validation, step-by-step road navigation, dual-leg route visualization (Leg 1: Captain to Pickup, Leg 2: Pickup to Destination), live GPS broadcast, and document verification upload portal. |
+| **Driver Partner** | **`8081`** | [http://localhost:8081/driver/login](http://localhost:8081/driver/login) | Map-first partner terminal, online/offline duty switch, real-time incoming request countdown card, atomic ride acceptance, start trip OTP validation, step-by-step road navigation, dual-leg route visualization (Leg 1: Captain to Pickup, Leg 2: Pickup to Destination), early completion reason validation modal, live GPS broadcast, and document verification upload portal. |
 | **Fleet Administrator** | **`8082`** | [http://localhost:8082/admin/login](http://localhost:8082/admin/login) | Command center with live fleet telemetry map, Chart.js 7-day revenue & volume analytics, driver KYC & Cloudinary document verification panel with approve/reject workflow, and live searchable Trip Operations Ledger. |
-| **JavaFX Desktop Console** | **Desktop Client** | Run `RideEaseFXApp` | Native desktop administrative & dispatch application featuring rich Java Event Handling (ActionEvents, ChangeListeners, MouseEvents, TableView row selection with Cloudinary photo previews, and interactive charts). |
+| **JavaFX Desktop Console** | **Desktop Client** | Run `RideEaseFXApp` | Native desktop administrative & dispatch application featuring interactive OSRM route map canvas, live STOMP subscriptions, real-time port health badges (8080, 8081, 8082), live dynamic driver scanning, database-bound Pie/Bar charts, and Cloudinary KYC inspection. |
 
 ### Subproject Structure:
 - **`backend/`:** Complete Spring Boot 3.2.5 enterprise web application with server-rendered Thymeleaf dynamic templates, WebSocket STOMP telemetry, Spring Data JPA, and MySQL persistence.
-  - **`backend/src/main/java/com/rideease/javafx/`:** Native JavaFX Desktop Console (`RideEaseFXApp.java`) with FXML views and controllers.
+  - **`backend/src/main/java/com/rideease/javafx/`:** Native JavaFX Desktop Console (`RideEaseFXApp.java`) with FXML views, models, and controllers.
 - **`database/schema.sql`:** Complete MySQL 8.0 DDL relational schema for all tables (`users`, `drivers`, `vehicles`, `bookings`, `reviews`, `safety_contacts`).
-- **`docs/`:** System design documents, architecture specifications, API flows, and relational schemas.
+- **`docs/`:** System design documents, architecture specifications, API flows, feature parity reports, and relational schemas.
 - **`android/`:** Native Android client architecture documentation.
 
 ---
@@ -30,34 +30,31 @@ RideEase operates with a dedicated **3-port isolation architecture** hosted on a
 - **Enterprise Relational Schema:** Tables for `users`, `drivers`, `vehicles`, `bookings`, `reviews`, and `safety_contacts`.
 - **Automated Schema Generation:** Powered by Hibernate DDL auto-updates (`spring.jpa.hibernate.ddl-auto=update`).
 - **Spherical Haversine Distance Engine:** High-performance SQL queries for nearby driver discovery within custom kilometer radii.
-- **Health Check Endpoint (`/api/health/db`):** Live database connection and latency diagnostics.
+- **Health Check Endpoint (`/api/health/db` & `/api/desktop/health`):** Live database connection and multi-port health diagnostics.
 
 ### 2. 📄 Cloudinary Vehicle & Driver Document Verification
 - **Driver Profile & Vehicle KYC:** Dedicated portal (`/driver/verification`) where drivers upload personal photos, vehicle photos, Driving License, RC Book, Insurance Policy, and Commercial Permit.
 - **Cloudinary Media CDN:** Uploads are stored securely in categorized Cloudinary folders with thumbnail transformation and document viewing links.
-- **Admin Review Workflow:** Admins can preview documents from Cloudinary at `/admin/verifications` and approve or reject applications with custom feedback notes.
+- **Admin Review Workflow:** Admins can preview documents from Cloudinary at `/admin/verifications` (and directly within the JavaFX Compliance Dossier) and approve or reject applications with custom feedback notes.
 
 ### 3. 🖥️ JavaFX Desktop Dispatch & Fleet Management Console
 - Native desktop interface for fleet operations with rich Java Event Handling:
-  - **ActionEvents:** One-click approval, rejection, and database sync handlers.
-  - **MouseEvents:** Table row clicks instantly load driver documents and profile pictures from Cloudinary into a preview inspector.
-  - **Property Bindings & ChangeListeners:** Real-time reactive filtering across names, license plates, and vehicle categories.
-  - **Concurrency Tasks:** Background asynchronous worker threads (`javafx.concurrent.Task`) with `setOnSucceeded` and `setOnFailed` event listeners.
+  - **Interactive Route Map Canvas:** Visual Bezier route renderer between Pickup and Destination with animated vehicle telemetry.
+  - **Live Service Health Monitor:** Automatic 5-second background pinging of Port 8080, 8081, and 8082 endpoints with responsive visual status pills.
+  - **Real Database KPI & Chart Integration:** Compliance distribution PieChart and Vehicle Tier BarChart directly backed by MySQL queries via `/api/desktop/kpis`.
+  - **Dynamic Nearby Driver Radar:** Autonomous 4-second scanner querying `/api/drivers/nearby`.
+  - **Conditional OTP Display:** Security-hardened 4-digit OTP card displayed only after driver acceptance (`ACCEPTED` state).
+  - **ActionEvents & TableView Bindings:** Real-time table selection loading Cloudinary photos and license dossiers.
 
 ### 4. 🗺️ Dual-Phase OSRM Route Navigation & Live Telemetry
 - **Accurate Device Geolocation:** Both Rider and Driver interfaces request device GPS permissions with high accuracy (`enableHighAccuracy: true`).
-- **Nearby Driver Discovery:** Displays the count and live map markers of available captains nearby.
 - **Dual-Phase Navigation Flow:**
-  - **Phase 1 (Navigation to Pickup):** Once a ride is accepted (`ACCEPTED`), the driver terminal map focuses on the navigation route from the driver's current position to the passenger's pickup location, with a top turn-by-turn instruction banner and Google Maps GPS navigation link.
-  - **Arrival & OTP Verification (`ARRIVING`):** When within 75 meters of the pickup spot, the system notifies both parties. The driver terminal prompts for the passenger's 4-digit OTP.
-  - **Phase 2 (Navigation to Destination):** Upon verifying the OTP (`IN_PROGRESS`), the pickup route clears, and the map automatically navigates to the passenger's destination with remaining ETA and the "Complete Trip" settlement action.
-- **Movable & Expandable Bottom Sheets:**
-  - Floating sheets in Rider, Driver, and Tracking panels are movable and support drag/click expansion (`Expanded`, `Default`, and `Minimized` states) with guaranteed minimum height to eliminate content shrinkage.
-- **Emergency Drop Ride Option:** Drivers can drop active trips directly from the HUD if an emergency arises, instantly releasing the vehicle back to available status.
-- **Live Cancellation Synchronization:** Cancellations triggered from Rider, Driver, or Admin panels update instantaneously across all connected screens via WebSockets without page locking.
-- **Targeted Driver Telemetry Update:**
-  - For `driver@gmail.com`: Position automatically advances towards the destination every **2 seconds** for live demonstration.
-  - For all other drivers: Real-time device GPS is streamed continuously via `watchPosition`.
+  - **Phase 1 (Navigation to Pickup):** Once a ride is accepted (`ACCEPTED`), the driver terminal map focuses on the navigation route to the passenger's pickup location.
+  - **Arrival & OTP Verification (`ARRIVING`):** When within 75 meters of the pickup spot, the system notifies both parties and prompts for the 4-digit OTP.
+  - **Phase 2 (Navigation to Destination):** Upon verifying the OTP (`IN_PROGRESS`), the route switches to passenger destination with remaining ETA.
+- **Early Drop Modal Guard:** If a driver attempts to complete a trip before reaching the destination coordinate, an early completion modal requires providing a valid operational reason.
+- **Automated Scheduled Ride Windowing:** Scheduled rides remain in `SCHEDULED` status until their scheduled dispatch window (within 2 minutes of pickup), preventing premature driver alerts.
+- **Instant Cancellation Synchronization:** Cancellations triggered by rider or driver immediately broadcast across STOMP WebSockets (`/topic/drivers/requests` and `/topic/ride/{id}/status`), immediately dismissing cards across all active sessions.
 
 ---
 
@@ -116,8 +113,9 @@ Access the web portals:
 Launch `RideEaseFXApp` directly from your IDE or execute:
 ```powershell
 cd backend
-mvn compile exec:java -Dexec.mainClass="com.rideease.javafx.RideEaseFXApp"
+mvn javafx:run
 ```
+*(Alternatively: `mvn compile exec:java -Dexec.mainClass="com.rideease.javafx.RideEaseFXApp"`)*
 
 ---
 

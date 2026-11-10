@@ -1,4 +1,4 @@
-# RideEase ("Toury" Edition) — Comprehensive Project Documentation
+# RideEase ("Unified" Edition) — Comprehensive Project Documentation
 
 ---
 
@@ -60,7 +60,7 @@
 ## 1. Introduction
 
 ### 1.1 Overview
-**RideEase** (internally code-named **"Toury" Edition**) is an enterprise-grade, multi-portal intelligent cab booking and fleet dispatching platform. Built on modern Java technologies (**Java 17/21, Spring Boot 3.2.5, Spring Data JPA, Hibernate, MySQL 8.0, JavaFX Desktop Console, Cloudinary Media CDN, Leaflet, and WebSocket STOMP**), the system orchestrates on-demand urban mobility, ride scheduling, and real-time fleet operations.
+**RideEase** (internally code-named **"Unified" Edition**) is an enterprise-grade, multi-portal intelligent cab booking and fleet dispatching platform. Built on modern Java technologies (**Java 17/21, Spring Boot 3.2.5, Spring Data JPA, Hibernate, MySQL 8.0, JavaFX Desktop Console, Cloudinary Media CDN, Leaflet, and WebSocket STOMP**), the system orchestrates on-demand urban mobility, ride scheduling, and real-time fleet operations.
 
 The application features a **3-Port Multi-Connector Isolation Architecture** on an embedded Tomcat server alongside a standalone **JavaFX Desktop Administrative and Dispatch Console**, delivering dedicated security boundaries, independent access contexts, and tailored operational experiences for Passengers, Driver Partners, and Fleet Supervisors.
 
@@ -801,7 +801,7 @@ mvn test
 
 ## 14. Conclusion
 
-The **RideEase ("Toury" Edition)** cab booking platform provides a complete, modern solution for urban mobility. By combining Spring Boot 3, MySQL 8, JavaFX, OSRM road routing, and WebSocket STOMP messaging, the system delivers high security, accurate pricing, and a smooth user experience across all three operational roles (Rider, Driver, and Administrator).
+The **RideEase ("Unified" Edition)** cab booking platform provides a complete, modern solution for urban mobility. By combining Spring Boot 3, MySQL 8, JavaFX, OSRM road routing, and WebSocket STOMP messaging, the system delivers high security, accurate pricing, and a smooth user experience across all three operational roles (Rider, Driver, and Administrator).
 
 From advance scheduling and dual-leg navigation to Cloudinary KYC verification and driver-led payment confirmation, RideEase provides a robust foundation ready for production deployment and future expansion into multi-city fleet operations.
 

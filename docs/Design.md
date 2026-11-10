@@ -1,4 +1,4 @@
-# RideEase — UI/UX Design System & Screen Blueprint (Toury / RideEase)
+# RideEase — UI/UX Design System & Screen Blueprint (Unified Edition)
 
 > Based on the Master Multi-Panel Design Specification (User Panel, Driver Panel, and Admin Panel).
 
@@ -29,7 +29,7 @@
 
 | Screen # | Screen Name | Key UI Elements & Interactive Components |
 |---|---|---|
-| **1** | **Splash Screen** | "Toury / RideEase" branding, gradient purple backdrop, hero cab graphic, taglines |
+| **1** | **Splash Screen** | "RideEase" branding, gradient purple backdrop, hero cab graphic, taglines |
 | **2** | **Login** | Mobile/Email input, password toggle, Social logins (Google, Apple), "Sign In" button |
 | **3** | **Signup / Register** | Full Name, Email, Phone number, Password, Role selector, Terms checkbox |
 | **4** | **Home Dashboard** | User greeting ("Hello, Rahul"), "Where are you going?" search bar, Recent & Saved locations, promo banner |
