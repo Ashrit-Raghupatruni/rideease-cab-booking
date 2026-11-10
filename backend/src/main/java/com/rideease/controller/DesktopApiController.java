@@ -197,7 +197,7 @@ public class DesktopApiController {
 
         // Find or create default passenger for desktop session
         User passenger = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.ROLE_USER)
+                .filter(u -> u.getRole() == Role.PASSENGER)
                 .findFirst()
                 .orElseGet(() -> {
                     User u = new User();
@@ -205,7 +205,7 @@ public class DesktopApiController {
                     u.setName("Desktop Passenger");
                     u.setEmail("passenger.desktop@rideease.com");
                     u.setPassword("{noop}pass123");
-                    u.setRole(Role.ROLE_USER);
+                    u.setRole(Role.PASSENGER);
                     return userRepository.save(u);
                 });
 
