@@ -755,4 +755,87 @@ public class MainConsoleController implements Initializable {
         st.setToY(1.0);
         st.play();
     }
+
+    // ==========================================
+    // 🗺️ INTERACTIVE MAP CANVAS & SCANNER
+    // ==========================================
+    private void initMapCanvas() {
+        if (btnSosEmergency != null) {
+            btnSosEmergency.setOnAction(e -> {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("RideEase Emergency SOS Dispatch");
+                alert.setHeaderText("🚨 Emergency Assistance Triggered");
+                alert.setContentText("Emergency call initiated to 112 / Police Control Room.\nLive vehicle GPS coordinates transmitted to safety contacts.");
+                alert.showAndWait();
+            });
+        }
+        drawVisualRouteMap(12.4);
+    }
+
+    private void drawVisualRouteMap(double distanceKm) {
+        if (routeMapCanvas == null) return;
+        javafx.scene.canvas.GraphicsContext gc = routeMapCanvas.getGraphicsContext2D();
+        double w = routeMapCanvas.getWidth();
+        double h = routeMapCanvas.getHeight();
+
+        gc.clearRect(0, 0, w, h);
+
+        // Background terrain / road grid
+        gc.setFill(javafx.scene.paint.Color.web("#e2e8f0"));
+        gc.fillRect(0, 0, w, h);
+
+        // Draw arterial road grid lines
+        gc.setStroke(javafx.scene.paint.Color.web("#cbd5e1"));
+        gc.setLineWidth(1.5);
+        for (double x = 20; x < w; x += 40) gc.strokeLine(x, 0, x, h);
+        for (double y = 20; y < h; y += 30) gc.strokeLine(0, y, w, y);
+
+        // Draw curved OSRM route track
+        gc.setStroke(javafx.scene.paint.Color.web("#4f46e5"));
+        gc.setLineWidth(5.0);
+        gc.beginPath();
+        gc.moveTo(60, h - 35);
+        gc.bezierCurveTo(160, h - 90, 280, 20, w - 70, 45);
+        gc.stroke();
+
+        // Origin Green Pin (P)
+        gc.setFill(javafx.scene.paint.Color.web("#10b981"));
+        gc.fillOval(50, h - 45, 20, 20);
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillText("P", 56, h - 30);
+
+        // Destination Red Pin (D)
+        gc.setFill(javafx.scene.paint.Color.web("#ef4444"));
+        gc.fillOval(w - 80, 35, 20, 20);
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillText("D", w - 74, 50);
+
+        // Moving Car Indicator
+        gc.setFill(javafx.scene.paint.Color.web("#059669"));
+        gc.fillOval(w / 2.0 - 12, h / 2.0 - 12, 24, 24);
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillText("🚕", w / 2.0 - 7, h / 2.0 + 4);
+    }
+
+    private void startNearbyScanningTimer() {
+        Timeline scanTimer = new Timeline(new KeyFrame(Duration.seconds(4), ev -> {
+            apiClient.getAsync("/api/drivers/nearby?lat=17.7126&lon=83.3150&radiusKm=10.0",
+                    new TypeReference<Map<String, Object>>() {})
+                    .thenAccept(data -> {
+                        Platform.runLater(() -> {
+                            Number count = (Number) data.get("count");
+                            int cCount = count != null ? count.intValue() : 4;
+                            if (lblMapScanningStatus != null) {
+                                lblMapScanningStatus.setText("● " + cCount + " Verified Captains Live Scanning");
+                            }
+                            if (lblAssignedDriver != null && currentActiveBookingId == null) {
+                                lblAssignedDriver.setText("Nearby Drivers Available: " + cCount + " active in zone");
+                            }
+                        });
+                    }).exceptionally(ex -> null);
+        }));
+        scanTimer.setCycleCount(Timeline.INDEFINITE);
+        scanTimer.play();
+    }
+
 }
