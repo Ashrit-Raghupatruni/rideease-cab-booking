@@ -89,6 +89,8 @@ public class MainConsoleController implements Initializable {
     @FXML private Button btnDeclineRide;
     @FXML private TextField txtDriverOtpVerify;
     @FXML private Button btnVerifyOtpAndStart;
+    @FXML private javafx.scene.canvas.Canvas routeMapCanvasDriver;
+    @FXML private Label lblDriverNavPhase;
 
     // --- Fleet Admin KPI & Charts ---
     @FXML private Label lblKpiDrivers;
@@ -174,29 +176,7 @@ public class MainConsoleController implements Initializable {
     private void setupWebSocketListeners() {
         // 1. Driver Radar: Incoming trip dispatch broadcast
         stompClient.subscribe("/topic/drivers/requests", payload -> {
-            if (!isDriverOnline) return; // Ignore if driver is offline
-
-            this.incomingDispatchBookingId = (String) payload.get("bookingId");
-            String pickup = (String) payload.get("pickupAddress");
-            String dropoff = (String) payload.get("dropoffAddress");
-            Number fareNum = (Number) payload.get("fare");
-            Number distNum = (Number) payload.get("distanceKm");
-
-            double fare = fareNum != null ? fareNum.doubleValue() : 200.0;
-            double dist = distNum != null ? distNum.doubleValue() : 10.0;
-
-            if (lblIncomingPassenger != null) lblIncomingPassenger.setText("Trip Dispatch #" + incomingDispatchBookingId);
-            if (lblIncomingRoute != null) lblIncomingRoute.setText(pickup + " ➔ " + dropoff + " (" + dist + " km)");
-            if (lblIncomingPayout != null) lblIncomingPayout.setText(String.format("₹ %.2f Payout", fare));
-
-            if (cardIncomingTrip != null) {
-                cardIncomingTrip.setVisible(true);
-                animatePulse(cardIncomingTrip);
-            }
-            if (btnAcceptRide != null) btnAcceptRide.setDisable(false);
-            if (btnDeclineRide != null) btnDeclineRide.setDisable(false);
-
-            startCountdownTimer();
+            renderIncomingDispatchCard(payload);
         });
 
         // 2. Admin Radar: Real-time fleet KPI & verification events
@@ -309,6 +289,12 @@ public class MainConsoleController implements Initializable {
                         stompClient.subscribe("/topic/ride/" + currentActiveBookingId + "/status", statusPayload -> {
                             handleBookingStatusTransition(statusPayload);
                         });
+
+                        // Immediately trigger incoming check for driver tab
+                        Map<String, Object> instantPayload = new HashMap<>(resp);
+                        instantPayload.put("pickupAddress", txtRiderPickup != null ? txtRiderPickup.getText() : "Pickup Spot");
+                        instantPayload.put("dropoffAddress", txtRiderDrop != null ? txtRiderDrop.getText() : "Dropoff Spot");
+                        renderIncomingDispatchCard(instantPayload);
                     });
                 })
                 .exceptionally(ex -> {
@@ -402,6 +388,7 @@ public class MainConsoleController implements Initializable {
                                 lblCountdownTimer.setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold; -fx-font-size: 13px;");
                                 btnAcceptRide.setDisable(true);
                                 animatePulse(cardIncomingTrip);
+                                drawDriverRouteMap("PICKUP", 12.4);
                             });
                         });
             });
@@ -415,6 +402,8 @@ public class MainConsoleController implements Initializable {
                 if (cardIncomingTrip != null) cardIncomingTrip.setVisible(false);
             });
         }
+
+        startDriverDispatchPollingTimer();
 
         if (btnVerifyOtpAndStart != null) {
             btnVerifyOtpAndStart.setOnAction(e -> {
@@ -432,6 +421,7 @@ public class MainConsoleController implements Initializable {
                                     lblCountdownTimer.setStyle("-fx-text-fill: #0284c7; -fx-font-weight: bold; -fx-font-size: 13px;");
                                     if (txtDriverOtpVerify != null) txtDriverOtpVerify.clear();
                                     loadDriverStats();
+                                    drawDriverRouteMap("DESTINATION", 12.4);
                                 } else {
                                     lblCountdownTimer.setText("✕ INVALID OTP CODE");
                                     lblCountdownTimer.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold; -fx-font-size: 13px;");
@@ -775,6 +765,7 @@ public class MainConsoleController implements Initializable {
             });
         }
         drawVisualRouteMap(12.4);
+        drawDriverRouteMap("PICKUP", 12.4);
     }
 
     private void drawVisualRouteMap(double distanceKm) {
@@ -905,4 +896,100 @@ public class MainConsoleController implements Initializable {
             return false;
         }
     }
+
+    private void renderIncomingDispatchCard(Map<String, Object> payload) {
+        if (!isDriverOnline) return;
+
+        this.incomingDispatchBookingId = (String) payload.get("bookingId");
+        String pickup = (String) payload.get("pickupAddress");
+        String dropoff = (String) payload.get("dropoffAddress");
+        Number fareNum = (Number) payload.get("fare");
+        Number distNum = (Number) payload.get("distanceKm");
+
+        double fare = fareNum != null ? fareNum.doubleValue() : 200.0;
+        double dist = distNum != null ? distNum.doubleValue() : 10.0;
+
+        if (lblIncomingPassenger != null) lblIncomingPassenger.setText("Trip Dispatch #" + (incomingDispatchBookingId != null ? incomingDispatchBookingId : ""));
+        if (lblIncomingRoute != null) lblIncomingRoute.setText(pickup + " ➔ " + dropoff + " (" + dist + " km)");
+        if (lblIncomingPayout != null) lblIncomingPayout.setText(String.format("₹ %.2f Payout", fare));
+
+        if (cardIncomingTrip != null) {
+            cardIncomingTrip.setVisible(true);
+            animatePulse(cardIncomingTrip);
+        }
+        if (btnAcceptRide != null) btnAcceptRide.setDisable(false);
+        if (btnDeclineRide != null) btnDeclineRide.setDisable(false);
+
+        drawDriverRouteMap("PICKUP", dist);
+        startCountdownTimer();
+    }
+
+    private void startDriverDispatchPollingTimer() {
+        Timeline dispatchPollTimer = new Timeline(new KeyFrame(Duration.seconds(3), ev -> {
+            if (!isDriverOnline) return;
+            if (incomingDispatchBookingId != null && cardIncomingTrip != null && cardIncomingTrip.isVisible()) return;
+
+            apiClient.getAsync("/api/desktop/driver/incoming", new TypeReference<Map<String, Object>>() {})
+                    .thenAccept(res -> {
+                        Platform.runLater(() -> {
+                            Boolean hasDispatch = (Boolean) res.get("hasDispatch");
+                            if (Boolean.TRUE.equals(hasDispatch)) {
+                                renderIncomingDispatchCard(res);
+                            }
+                        });
+                    }).exceptionally(ex -> null);
+        }));
+        dispatchPollTimer.setCycleCount(Timeline.INDEFINITE);
+        dispatchPollTimer.play();
+    }
+
+    private void drawDriverRouteMap(String phase, double distanceKm) {
+        if (routeMapCanvasDriver == null) return;
+        javafx.scene.canvas.GraphicsContext gc = routeMapCanvasDriver.getGraphicsContext2D();
+        double w = routeMapCanvasDriver.getWidth();
+        double h = routeMapCanvasDriver.getHeight();
+
+        gc.clearRect(0, 0, w, h);
+
+        // Background terrain / road grid
+        gc.setFill(javafx.scene.paint.Color.web("#f1f5f9"));
+        gc.fillRect(0, 0, w, h);
+
+        // Draw arterial road grid lines
+        gc.setStroke(javafx.scene.paint.Color.web("#e2e8f0"));
+        gc.setLineWidth(1.5);
+        for (double x = 20; x < w; x += 40) gc.strokeLine(x, 0, x, h);
+        for (double y = 20; y < h; y += 30) gc.strokeLine(0, y, w, y);
+
+        boolean isPickup = "PICKUP".equalsIgnoreCase(phase);
+        String trackColor = isPickup ? "#f59e0b" : "#4f46e5";
+
+        // Draw curved navigation track
+        gc.setStroke(javafx.scene.paint.Color.web(trackColor));
+        gc.setLineWidth(5.0);
+        gc.beginPath();
+        gc.moveTo(50, h - 35);
+        gc.bezierCurveTo(150, h - 90, 270, 25, w - 60, 45);
+        gc.stroke();
+
+        // Start point Pin (Driver position)
+        gc.setFill(javafx.scene.paint.Color.web("#059669"));
+        gc.fillOval(42, h - 45, 22, 22);
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillText("🚕", 46, h - 28);
+
+        // End point Pin (Pickup or Destination)
+        String endPinColor = isPickup ? "#10b981" : "#ef4444";
+        String endPinLetter = isPickup ? "P" : "D";
+        gc.setFill(javafx.scene.paint.Color.web(endPinColor));
+        gc.fillOval(w - 70, 35, 22, 22);
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillText(endPinLetter, w - 63, 51);
+
+        if (lblDriverNavPhase != null) {
+            lblDriverNavPhase.setText(isPickup ? "● Phase 1: Navigation to Pickup" : "● Phase 2: Navigation to Destination");
+            lblDriverNavPhase.setStyle(isPickup ? "-fx-font-size: 11px; -fx-text-fill: #d97706; -fx-font-weight: bold;" : "-fx-font-size: 11px; -fx-text-fill: #4338ca; -fx-font-weight: bold;");
+        }
+    }
+
 }

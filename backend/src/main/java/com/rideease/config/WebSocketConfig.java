@@ -19,7 +19,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint for SockJS/STOMP connection from React Web and Android
+        // 1. Raw WebSocket endpoint for JavaFX native client & Android
+        registry.addEndpoint("/ws-ride")
+                .setAllowedOriginPatterns("*");
+
+        // 2. SockJS fallback endpoint for Web Browsers (Thymeleaf / React)
         registry.addEndpoint("/ws-ride")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();

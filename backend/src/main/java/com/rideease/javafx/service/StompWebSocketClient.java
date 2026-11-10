@@ -22,7 +22,7 @@ import java.util.function.Consumer;
  */
 public class StompWebSocketClient implements WebSocket.Listener {
 
-    private static final String WS_URL = "ws://localhost:8080/ws-ride/websocket";
+    private static final String WS_URL = "ws://localhost:8080/ws-ride";
     private WebSocket webSocket;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<String, Consumer<Map<String, Object>>> subscriptions = new ConcurrentHashMap<>();

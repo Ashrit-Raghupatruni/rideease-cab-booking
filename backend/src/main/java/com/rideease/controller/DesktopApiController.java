@@ -278,6 +278,27 @@ public class DesktopApiController {
     // 🚕 DRIVER PARTNER ENDPOINTS
     // ==========================================
 
+    @GetMapping("/driver/incoming")
+    public ResponseEntity<Map<String, Object>> getIncomingDispatch() {
+        Map<String, Object> resp = new HashMap<>();
+        List<Booking> searchList = bookingRepository.findByStatus(Booking.BookingStatus.SEARCHING);
+        if (!searchList.isEmpty()) {
+            Booking latest = searchList.get(searchList.size() - 1);
+            resp.put("hasDispatch", true);
+            resp.put("bookingId", latest.getId());
+            resp.put("pickupAddress", latest.getPickupAddress());
+            resp.put("dropoffAddress", latest.getDropoffAddress());
+            resp.put("fare", latest.getEstimatedFare());
+            resp.put("distanceKm", latest.getDistanceKm());
+            resp.put("durationMinutes", latest.getEstimatedDurationMinutes());
+            resp.put("vehicleCategory", latest.getVehicleCategory() != null ? latest.getVehicleCategory().name() : "SEDAN");
+            resp.put("otp", latest.getOtp());
+            return ResponseEntity.ok(resp);
+        }
+        resp.put("hasDispatch", false);
+        return ResponseEntity.ok(resp);
+    }
+
     @PostMapping("/driver/duty")
     @Transactional
     public ResponseEntity<Map<String, Object>> toggleDuty(
