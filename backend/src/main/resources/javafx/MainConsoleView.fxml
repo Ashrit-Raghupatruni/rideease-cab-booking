@@ -92,13 +92,17 @@
                                 <Label style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #0f172a;" text="Route Selection &amp; Vehicle Tiers" />
                                 
                                 <VBox spacing="6.0">
-                                    <Label style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;" text="PICKUP LOCATION" />
-                                    <TextField fx:id="txtRiderPickup" promptText="Enter pickup spot..." text="Visakhapatnam Beach Road" />
+                                    <HBox alignment="CENTER_LEFT">
+                                        <Label style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;" text="PICKUP LOCATION" />
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="btnCurrentLocation" style="-fx-background-color: transparent; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 0; -fx-cursor: hand;" text="🎯 Use Current Location" />
+                                    </HBox>
+                                    <TextField fx:id="txtRiderPickup" promptText="Search city, area, or landmark..." text="SRM UNIVERSITY AP" />
                                 </VBox>
 
                                 <VBox spacing="6.0">
                                     <Label style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold;" text="DESTINATION DROP-OFF" />
-                                    <TextField fx:id="txtRiderDrop" promptText="Enter destination..." text="Rushikonda IT Park" />
+                                    <TextField fx:id="txtRiderDrop" promptText="Search destination city or landmark..." text="Mangalagiri AIIMS Hospital" />
                                 </VBox>
 
                                 <VBox spacing="8.0">

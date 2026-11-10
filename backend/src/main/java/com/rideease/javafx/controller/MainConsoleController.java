@@ -59,6 +59,14 @@ public class MainConsoleController implements Initializable {
     // --- Rider Interactive Controls ---
     @FXML private TextField txtRiderPickup;
     @FXML private TextField txtRiderDrop;
+    @FXML private Button btnCurrentLocation;
+
+    // Movable Map Panning State
+    private double mapPanOffsetX = 0.0;
+    private double mapPanOffsetY = 0.0;
+    private double mapDragStartX = 0.0;
+    private double mapDragStartY = 0.0;
+    private int mapZoomOffset = 0;
     @FXML private Button btnTierMini;
     @FXML private Button btnTierSedan;
     @FXML private Button btnTierSuv;
@@ -235,74 +243,117 @@ public class MainConsoleController implements Initializable {
         calculateTariffFromBackend();
     }
 
-    private double[] resolveCoordinatesForAddress(String addr, boolean isPickup) {
-        if (addr == null || addr.trim().isEmpty()) {
-            return isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132};
+    private CompletableFuture<double[]> searchLocationCoordinatesAsync(String query, boolean isPickup) {
+        if (query == null || query.trim().isEmpty()) {
+            return CompletableFuture.completedFuture(isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132});
         }
-        String lower = addr.trim().toLowerCase();
+        String clean = query.trim();
+        String lower = clean.toLowerCase();
+
+        // 1. Fast regional landmark dictionary
         if (lower.contains("srm") || lower.contains("university") || lower.contains("amaravati") || lower.contains("neerukonda")) {
-            return new double[]{16.462434, 80.506379};
-        } else if (lower.contains("mangalagiri") || lower.contains("aiims") || lower.contains("hospital")) {
-            return new double[]{16.446245, 80.580132};
-        } else if (lower.contains("beach") || lower.contains("rk beach") || lower.contains("vizag")) {
-            return new double[]{17.7126, 83.3150};
-        } else if (lower.contains("rushikonda") || lower.contains("it park") || lower.contains("gitam")) {
-            return new double[]{17.7818, 83.3792};
-        } else if (lower.contains("vijayawada") || lower.contains("bus station") || lower.contains("pnbs")) {
-            return new double[]{16.5178, 80.6279};
+            return CompletableFuture.completedFuture(new double[]{16.462434, 80.506379});
+        } else if (lower.contains("mangalagiri") || lower.contains("aiims")) {
+            return CompletableFuture.completedFuture(new double[]{16.446245, 80.580132});
+        } else if (lower.contains("beach") || lower.contains("vizag") || lower.contains("visakhapatnam")) {
+            return CompletableFuture.completedFuture(new double[]{17.7126, 83.3150});
+        } else if (lower.contains("rushikonda") || lower.contains("it park")) {
+            return CompletableFuture.completedFuture(new double[]{17.7818, 83.3792});
+        } else if (lower.contains("vijayawada") || lower.contains("pnbs")) {
+            return CompletableFuture.completedFuture(new double[]{16.5178, 80.6279});
         } else if (lower.contains("guntur")) {
-            return new double[]{16.3067, 80.4365};
+            return CompletableFuture.completedFuture(new double[]{16.3067, 80.4365});
+        } else if (lower.contains("hyderabad")) {
+            return CompletableFuture.completedFuture(new double[]{17.3850, 78.4867});
+        } else if (lower.contains("bengaluru") || lower.contains("bangalore")) {
+            return CompletableFuture.completedFuture(new double[]{12.9716, 77.5946});
+        } else if (lower.contains("chennai")) {
+            return CompletableFuture.completedFuture(new double[]{13.0827, 80.2707});
+        } else if (lower.contains("delhi")) {
+            return CompletableFuture.completedFuture(new double[]{28.6139, 77.2090});
+        } else if (lower.contains("mumbai")) {
+            return CompletableFuture.completedFuture(new double[]{19.0760, 72.8777});
         }
-        return isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132};
+
+        // 2. Real-time online OpenStreetMap Nominatim search
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String encoded = java.net.URLEncoder.encode(clean, java.nio.charset.StandardCharsets.UTF_8);
+                String searchUrl = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encoded;
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(searchUrl).openConnection();
+                conn.setRequestProperty("User-Agent", "RideEase-CabBooking/1.0 (contact@rideease.com)");
+                conn.setConnectTimeout(3500);
+                conn.setReadTimeout(4500);
+
+                if (conn.getResponseCode() == 200) {
+                    try (java.io.InputStream in = conn.getInputStream()) {
+                        com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(in);
+                        if (root.isArray() && root.size() > 0) {
+                            double lat = root.get(0).get("lat").asDouble();
+                            double lon = root.get(0).get("lon").asDouble();
+                            return new double[]{lat, lon};
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+            return isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132};
+        });
     }
 
     private void calculateTariffFromBackend() {
         String pickupStr = txtRiderPickup != null ? txtRiderPickup.getText() : "";
         String dropStr = txtRiderDrop != null ? txtRiderDrop.getText() : "";
 
-        double[] pCoords = resolveCoordinatesForAddress(pickupStr, true);
-        double[] dCoords = resolveCoordinatesForAddress(dropStr, false);
+        searchLocationCoordinatesAsync(pickupStr, true).thenAccept(pCoords -> {
+            searchLocationCoordinatesAsync(dropStr, false).thenAccept(dCoords -> {
+                Platform.runLater(() -> {
+                    this.currentPickupLat = pCoords[0];
+                    this.currentPickupLon = pCoords[1];
+                    this.currentDropLat = dCoords[0];
+                    this.currentDropLon = dCoords[1];
+                    // Reset pan on new route calculation
+                    this.mapPanOffsetX = 0.0;
+                    this.mapPanOffsetY = 0.0;
+                    this.mapZoomOffset = 0;
 
-        this.currentPickupLat = pCoords[0];
-        this.currentPickupLon = pCoords[1];
-        this.currentDropLat = dCoords[0];
-        this.currentDropLon = dCoords[1];
+                    apiClient.getAsync("/api/geo/route?pLat=" + currentPickupLat + "&pLon=" + currentPickupLon + "&dLat=" + currentDropLat + "&dLon=" + currentDropLon,
+                            new TypeReference<Map<String, Object>>() {})
+                            .thenAccept(route -> {
+                                Platform.runLater(() -> {
+                                    Number distNum = (Number) route.get("distanceKm");
+                                    Number durNum = (Number) route.get("durationMinutes");
+                                    this.currentTripDistanceKm = distNum != null ? distNum.doubleValue() : 11.9;
+                                    this.currentTripDurationMins = durNum != null ? durNum.intValue() : 14;
 
-        apiClient.getAsync("/api/geo/route?pLat=" + currentPickupLat + "&pLon=" + currentPickupLon + "&dLat=" + currentDropLat + "&dLon=" + currentDropLon,
-                new TypeReference<Map<String, Object>>() {})
-                .thenAccept(route -> {
-                    Platform.runLater(() -> {
-                        Number distNum = (Number) route.get("distanceKm");
-                        Number durNum = (Number) route.get("durationMinutes");
-                        this.currentTripDistanceKm = distNum != null ? distNum.doubleValue() : 11.9;
-                        this.currentTripDurationMins = durNum != null ? durNum.intValue() : 14;
+                                    double baseRate = 50.0;
+                                    double perKm = 14.0;
+                                    if ("MINI".equals(selectedVehicleTier)) { baseRate = 30.0; perKm = 10.0; }
+                                    else if ("SUV".equals(selectedVehicleTier)) { baseRate = 80.0; perKm = 18.0; }
 
-                        double baseRate = 50.0;
-                        double perKm = 14.0;
-                        if ("MINI".equals(selectedVehicleTier)) { baseRate = 30.0; perKm = 10.0; }
-                        else if ("SUV".equals(selectedVehicleTier)) { baseRate = 80.0; perKm = 18.0; }
+                                    double total = baseRate + (currentTripDistanceKm * perKm) + (currentTripDurationMins * 2.0);
 
-                        double total = baseRate + (currentTripDistanceKm * perKm) + (currentTripDurationMins * 2.0);
-
-                        if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
-                        if (lblDistance != null) lblDistance.setText(String.format(Locale.US, "Distance: %.1f km", currentTripDistanceKm));
-                        if (lblDuration != null) lblDuration.setText("Est. Time: ~" + currentTripDurationMins + " mins");
-                        animatePulse(lblFareAmount);
-                        drawVisualRouteMap(currentTripDistanceKm);
-                    });
-                })
-                .exceptionally(ex -> {
-                    Platform.runLater(() -> {
-                        this.currentTripDistanceKm = 11.9;
-                        this.currentTripDurationMins = 14;
-                        double total = 30.0 + (11.9 * 10.0) + (14 * 2.0);
-                        if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
-                        if (lblDistance != null) lblDistance.setText("Distance: 11.9 km");
-                        if (lblDuration != null) lblDuration.setText("Est. Time: ~14 mins");
-                        drawVisualRouteMap(11.9);
-                    });
-                    return null;
+                                    if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
+                                    if (lblDistance != null) lblDistance.setText(String.format(Locale.US, "Distance: %.1f km", currentTripDistanceKm));
+                                    if (lblDuration != null) lblDuration.setText("Est. Time: ~" + currentTripDurationMins + " mins");
+                                    animatePulse(lblFareAmount);
+                                    drawVisualRouteMap(currentTripDistanceKm);
+                                });
+                            })
+                            .exceptionally(ex -> {
+                                Platform.runLater(() -> {
+                                    this.currentTripDistanceKm = 11.9;
+                                    this.currentTripDurationMins = 14;
+                                    double total = 30.0 + (11.9 * 10.0) + (14 * 2.0);
+                                    if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
+                                    if (lblDistance != null) lblDistance.setText("Distance: 11.9 km");
+                                    if (lblDuration != null) lblDuration.setText("Est. Time: ~14 mins");
+                                    drawVisualRouteMap(11.9);
+                                });
+                                return null;
+                            });
                 });
+            });
+        });
     }
 
     private void executeRealBooking() {
@@ -317,13 +368,6 @@ public class MainConsoleController implements Initializable {
 
         String pickup = txtRiderPickup != null && !txtRiderPickup.getText().trim().isEmpty() ? txtRiderPickup.getText().trim() : "SRM UNIVERSITY AP";
         String drop = txtRiderDrop != null && !txtRiderDrop.getText().trim().isEmpty() ? txtRiderDrop.getText().trim() : "Mangalagiri AIIMS Hospital";
-
-        double[] pCoords = resolveCoordinatesForAddress(pickup, true);
-        double[] dCoords = resolveCoordinatesForAddress(drop, false);
-        this.currentPickupLat = pCoords[0];
-        this.currentPickupLon = pCoords[1];
-        this.currentDropLat = dCoords[0];
-        this.currentDropLon = dCoords[1];
 
         Map<String, String> form = new HashMap<>();
         form.put("pickupAddress", pickup);
@@ -952,8 +996,77 @@ public class MainConsoleController implements Initializable {
                 alert.showAndWait();
             });
         }
+
+        // Attach Drag-to-Pan & Scroll-to-Zoom handlers to Rider Map Canvas
+        if (routeMapCanvas != null) {
+            routeMapCanvas.setOnMousePressed(e -> {
+                mapDragStartX = e.getX();
+                mapDragStartY = e.getY();
+            });
+            routeMapCanvas.setOnMouseDragged(e -> {
+                double deltaX = e.getX() - mapDragStartX;
+                double deltaY = e.getY() - mapDragStartY;
+                mapPanOffsetX += deltaX;
+                mapPanOffsetY += deltaY;
+                mapDragStartX = e.getX();
+                mapDragStartY = e.getY();
+                drawVisualRouteMap(currentTripDistanceKm);
+            });
+            routeMapCanvas.setOnScroll(e -> {
+                if (e.getDeltaY() > 0) {
+                    if (mapZoomOffset < 3) mapZoomOffset++;
+                } else if (e.getDeltaY() < 0) {
+                    if (mapZoomOffset > -3) mapZoomOffset--;
+                }
+                drawVisualRouteMap(currentTripDistanceKm);
+            });
+        }
+
+        // Attach Current Location Handler
+        if (btnCurrentLocation != null) {
+            btnCurrentLocation.setOnAction(e -> fetchAndSetCurrentLocation());
+        }
+
         drawVisualRouteMap(11.9);
         drawDriverRouteMap("PICKUP", 11.9);
+    }
+
+    private void fetchAndSetCurrentLocation() {
+        if (btnCurrentLocation != null) btnCurrentLocation.setText("⏳ Detecting GPS...");
+        CompletableFuture.runAsync(() -> {
+            try {
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL("https://ipapi.co/json/").openConnection();
+                conn.setRequestProperty("User-Agent", "RideEase-CabBooking/1.0");
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+
+                if (conn.getResponseCode() == 200) {
+                    try (java.io.InputStream in = conn.getInputStream()) {
+                        com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(in);
+                        String city = root.path("city").asText("Vijayawada");
+                        double lat = root.path("latitude").asDouble(16.5167);
+                        double lon = root.path("longitude").asDouble(80.6167);
+
+                        Platform.runLater(() -> {
+                            if (txtRiderPickup != null) txtRiderPickup.setText(city + " (My Location)");
+                            this.currentPickupLat = lat;
+                            this.currentPickupLon = lon;
+                            if (btnCurrentLocation != null) btnCurrentLocation.setText("🎯 Current Location (Set)");
+                            calculateTariffFromBackend();
+                        });
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            Platform.runLater(() -> {
+                if (txtRiderPickup != null) txtRiderPickup.setText("SRM AP (Current Location)");
+                this.currentPickupLat = 16.462434;
+                this.currentPickupLon = 80.506379;
+                if (btnCurrentLocation != null) btnCurrentLocation.setText("🎯 Current Location (Set)");
+                calculateTariffFromBackend();
+            });
+        });
     }
 
     private void drawVisualRouteMap(double distanceKm) {
@@ -970,6 +1083,9 @@ public class MainConsoleController implements Initializable {
                 pName, dName,
                 distanceKm,
                 "PICKUP",
+                mapPanOffsetX,
+                mapPanOffsetY,
+                mapZoomOffset,
                 () -> drawVisualRouteMap(distanceKm)
         );
     }
@@ -988,6 +1104,9 @@ public class MainConsoleController implements Initializable {
                 pName, dName,
                 distanceKm,
                 phase,
+                0.0,
+                0.0,
+                0,
                 () -> drawDriverRouteMap(phase, distanceKm)
         );
 
