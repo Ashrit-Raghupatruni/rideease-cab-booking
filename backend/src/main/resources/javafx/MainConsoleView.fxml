@@ -264,11 +264,20 @@
 
                                     <Separator style="-fx-background-color: #f1f5f9;" />
 
-                                    <!-- OTP Verification -->
-                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                    <!-- OTP Verification to Start Trip -->
+                                    <HBox fx:id="boxOtpStartTrip" alignment="CENTER_LEFT" spacing="10.0">
                                         <Label style="-fx-text-fill: #0f172a; -fx-font-size: 12px; -fx-font-weight: bold;" text="Enter Rider OTP:" />
                                         <TextField fx:id="txtDriverOtpVerify" prefWidth="100.0" promptText="4-digits" />
                                         <Button fx:id="btnVerifyOtpAndStart" styleClass="btn-primary" style="-fx-padding: 8px 16px;" text="Start Trip" />
+                                    </HBox>
+
+                                    <!-- Trip Completion & Cash/UPI Settlement (Revealed when Trip is In Progress) -->
+                                    <HBox fx:id="boxCompleteTripSection" alignment="CENTER_LEFT" spacing="12.0" visible="false" managed="false" style="-fx-background-color: #f0fdf4; -fx-padding: 10px 14px; -fx-background-radius: 8px; -fx-border-color: #86efac; -fx-border-radius: 8px;">
+                                        <VBox spacing="1.0" HBox.hgrow="ALWAYS">
+                                            <Label style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #166534;" text="Reached Destination?" />
+                                            <Label fx:id="lblFareCollectNotice" style="-fx-font-size: 11px; -fx-text-fill: #15803d;" text="Collect fare &amp; confirm trip settlement" />
+                                        </VBox>
+                                        <Button fx:id="btnCompleteTripDriver" styleClass="btn-success" style="-fx-padding: 8px 18px; -fx-font-weight: bold;" text="🏁 Complete Ride &amp; Confirm Payment" />
                                     </HBox>
                                 </VBox>
                             </VBox>

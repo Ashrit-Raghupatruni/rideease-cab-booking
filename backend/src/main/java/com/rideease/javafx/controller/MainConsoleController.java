@@ -90,6 +90,10 @@ public class MainConsoleController implements Initializable {
     @FXML private Button btnDeclineRide;
     @FXML private TextField txtDriverOtpVerify;
     @FXML private Button btnVerifyOtpAndStart;
+    @FXML private javafx.scene.layout.HBox boxOtpStartTrip;
+    @FXML private javafx.scene.layout.HBox boxCompleteTripSection;
+    @FXML private Label lblFareCollectNotice;
+    @FXML private Button btnCompleteTripDriver;
     @FXML private javafx.scene.canvas.Canvas routeMapCanvasDriver;
     @FXML private Label lblDriverNavPhase;
 
@@ -523,6 +527,50 @@ public class MainConsoleController implements Initializable {
 
         startDriverDispatchPollingTimer();
 
+        if (btnCompleteTripDriver != null) {
+            btnCompleteTripDriver.setOnAction(e -> {
+                String bId = incomingDispatchBookingId != null ? incomingDispatchBookingId : currentActiveBookingId;
+                if (bId == null) return;
+
+                Map<String, String> form = Map.of("bookingId", bId);
+                apiClient.postFormAsync("/api/desktop/driver/complete", form)
+                        .thenAccept(resp -> {
+                            Platform.runLater(() -> {
+                                lblCountdownTimer.setText("✓ TRIP COMPLETED • FARE COLLECTED");
+                                lblCountdownTimer.setStyle("-fx-text-fill: #15803d; -fx-font-weight: bold; -fx-font-size: 13px;");
+
+                                if (boxCompleteTripSection != null) {
+                                    boxCompleteTripSection.setVisible(false);
+                                    boxCompleteTripSection.setManaged(false);
+                                }
+                                if (boxOtpStartTrip != null) {
+                                    boxOtpStartTrip.setVisible(true);
+                                    boxOtpStartTrip.setManaged(true);
+                                }
+
+                                loadDriverStats();
+
+                                // Update Rider tab locally
+                                if (bId.equals(currentActiveBookingId)) {
+                                    Map<String, Object> syncPayload = new HashMap<>();
+                                    syncPayload.put("status", "COMPLETED");
+                                    syncPayload.put("bookingId", bId);
+                                    syncPayload.put("driverId", "DRV-001");
+                                    handleBookingStatusTransition(syncPayload);
+                                }
+
+                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                alert.setTitle("Trip Settled");
+                                alert.setHeaderText("💰 Fare Payment Received");
+                                alert.setContentText("Trip #" + bId + " has been completed successfully.\nPayment has been confirmed and settled to your driver wallet.");
+                                alert.showAndWait();
+
+                                if (cardIncomingTrip != null) cardIncomingTrip.setVisible(false);
+                            });
+                        });
+            });
+        }
+
         if (btnVerifyOtpAndStart != null) {
             btnVerifyOtpAndStart.setOnAction(e -> {
                 String inputOtp = txtDriverOtpVerify != null ? txtDriverOtpVerify.getText().trim() : "";
@@ -538,8 +586,29 @@ public class MainConsoleController implements Initializable {
                                     lblCountdownTimer.setText("TRIP IN PROGRESS • OTP VERIFIED");
                                     lblCountdownTimer.setStyle("-fx-text-fill: #0284c7; -fx-font-weight: bold; -fx-font-size: 13px;");
                                     if (txtDriverOtpVerify != null) txtDriverOtpVerify.clear();
+
+                                    // Switch from OTP entry box to "Complete Ride & Payment Confirmation" box
+                                    if (boxOtpStartTrip != null) {
+                                        boxOtpStartTrip.setVisible(false);
+                                        boxOtpStartTrip.setManaged(false);
+                                    }
+                                    if (boxCompleteTripSection != null) {
+                                        boxCompleteTripSection.setVisible(true);
+                                        boxCompleteTripSection.setManaged(true);
+                                        animatePulse(boxCompleteTripSection);
+                                    }
+
                                     loadDriverStats();
-                                    drawDriverRouteMap("DESTINATION", 12.4);
+                                    drawDriverRouteMap("DESTINATION", currentTripDistanceKm);
+
+                                    // Local sync to Rider Tab
+                                    if (bId.equals(currentActiveBookingId)) {
+                                        Map<String, Object> syncPayload = new HashMap<>();
+                                        syncPayload.put("status", "IN_PROGRESS");
+                                        syncPayload.put("bookingId", bId);
+                                        syncPayload.put("driverId", "DRV-001");
+                                        handleBookingStatusTransition(syncPayload);
+                                    }
                                 } else {
                                     lblCountdownTimer.setText("✕ INVALID OTP CODE");
                                     lblCountdownTimer.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold; -fx-font-size: 13px;");
