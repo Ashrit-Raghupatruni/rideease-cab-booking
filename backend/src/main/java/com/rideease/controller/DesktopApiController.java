@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rideease.dto.BookRideRequest;
 import com.rideease.model.Booking;
 import com.rideease.model.Driver;
+import com.rideease.model.Role;
 import com.rideease.model.User;
 import com.rideease.model.Vehicle;
 import com.rideease.repository.BookingRepository;
@@ -67,18 +68,24 @@ public class DesktopApiController {
         Map<String, Object> kpis = new HashMap<>();
 
         long totalDrivers = driverRepository.count();
-        long completedTrips = bookingRepository.countByStatus(Booking.BookingStatus.COMPLETED);
-        long pendingVerifications = driverRepository.countByVerificationStatus(Driver.VerificationStatus.PENDING);
-        Double grossRevenue = bookingRepository.sumTotalGrossRevenue();
+        List<Booking> completedList = bookingRepository.findByStatus(Booking.BookingStatus.COMPLETED);
+        long completedTrips = completedList.size();
+        
+        List<Driver> pendingDrivers = driverRepository.findByVerificationStatus(Driver.VerificationStatus.PENDING);
+        long pendingVerifications = pendingDrivers.size();
+
+        double grossRevenue = completedList.stream()
+                .mapToDouble(b -> b.getFinalFare() != null ? b.getFinalFare() : b.getEstimatedFare())
+                .sum();
 
         kpis.put("totalDrivers", totalDrivers);
         kpis.put("completedTrips", completedTrips);
         kpis.put("pendingVerifications", pendingVerifications);
-        kpis.put("grossRevenue", grossRevenue != null ? grossRevenue : 0.0);
+        kpis.put("grossRevenue", grossRevenue);
 
         // Verification Status Breakdown
-        long approved = driverRepository.countByVerificationStatus(Driver.VerificationStatus.APPROVED);
-        long rejected = driverRepository.countByVerificationStatus(Driver.VerificationStatus.REJECTED);
+        long approved = driverRepository.findByVerificationStatus(Driver.VerificationStatus.APPROVED).size();
+        long rejected = driverRepository.findByVerificationStatus(Driver.VerificationStatus.REJECTED).size();
         Map<String, Long> statusBreakdown = new HashMap<>();
         statusBreakdown.put("APPROVED", approved);
         statusBreakdown.put("PENDING", pendingVerifications);
@@ -86,9 +93,10 @@ public class DesktopApiController {
         kpis.put("statusBreakdown", statusBreakdown);
 
         // Fleet Category Breakdown
-        long miniCount = vehicleRepository.countByCategory(Vehicle.VehicleCategory.MINI);
-        long sedanCount = vehicleRepository.countByCategory(Vehicle.VehicleCategory.SEDAN);
-        long suvCount = vehicleRepository.countByCategory(Vehicle.VehicleCategory.SUV);
+        List<Vehicle> allVehicles = vehicleRepository.findAll();
+        long miniCount = allVehicles.stream().filter(v -> v.getCategory() == Vehicle.VehicleCategory.MINI).count();
+        long sedanCount = allVehicles.stream().filter(v -> v.getCategory() == Vehicle.VehicleCategory.SEDAN).count();
+        long suvCount = allVehicles.stream().filter(v -> v.getCategory() == Vehicle.VehicleCategory.SUV).count();
         Map<String, Long> categoryBreakdown = new HashMap<>();
         categoryBreakdown.put("MINI", miniCount);
         categoryBreakdown.put("SEDAN", sedanCount);
@@ -108,13 +116,13 @@ public class DesktopApiController {
             item.put("id", d.getId());
             item.put("licenseNumber", d.getLicenseNumber() != null ? d.getLicenseNumber() : "N/A");
             item.put("verificationStatus", d.getVerificationStatus() != null ? d.getVerificationStatus().name() : "PENDING");
-            item.put("rating", d.getRating() != null ? d.getRating() : 5.0);
-            item.put("totalTrips", d.getTotalTrips() != null ? d.getTotalTrips() : 0);
-            item.put("isOnline", d.getIsOnline() != null ? d.getIsOnline() : false);
-            item.put("photoUrl", d.getPhotoUrl() != null ? d.getPhotoUrl() : "");
-            item.put("rcDocUrl", d.getRcDocUrl() != null ? d.getRcDocUrl() : "");
-            item.put("insuranceDocUrl", d.getInsuranceDocUrl() != null ? d.getInsuranceDocUrl() : "");
-            item.put("permitDocUrl", d.getPermitDocUrl() != null ? d.getPermitDocUrl() : "");
+            item.put("rating", d.getRating());
+            item.put("totalTrips", d.getTotalTrips());
+            item.put("isOnline", d.isOnline());
+            item.put("photoUrl", d.getDriverPhotoUrl() != null ? d.getDriverPhotoUrl() : "");
+            item.put("rcDocUrl", d.getRcDocumentUrl() != null ? d.getRcDocumentUrl() : "");
+            item.put("insuranceDocUrl", d.getInsuranceDocumentUrl() != null ? d.getInsuranceDocumentUrl() : "");
+            item.put("permitDocUrl", d.getPermitDocumentUrl() != null ? d.getPermitDocumentUrl() : "");
 
             userRepository.findById(d.getUserId()).ifPresent(u -> {
                 item.put("name", u.getName());
@@ -152,7 +160,7 @@ public class DesktopApiController {
         Driver d = opt.get();
         Driver.VerificationStatus newStatus = Driver.VerificationStatus.valueOf(status.toUpperCase());
         d.setVerificationStatus(newStatus);
-        d.setRejectionReason("REJECTED".equalsIgnoreCase(status) ? note : null);
+        d.setVerificationNotes(note);
         driverRepository.save(d);
 
         resp.put("status", "SUCCESS");
@@ -189,27 +197,27 @@ public class DesktopApiController {
 
         // Find or create default passenger for desktop session
         User passenger = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == User.Role.ROLE_USER)
+                .filter(u -> u.getRole() == Role.ROLE_USER)
                 .findFirst()
                 .orElseGet(() -> {
                     User u = new User();
                     u.setId("USR-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
                     u.setName("Desktop Passenger");
                     u.setEmail("passenger.desktop@rideease.com");
-                    u.setPasswordHash("{noop}pass123");
-                    u.setRole(User.Role.ROLE_USER);
+                    u.setPassword("{noop}pass123");
+                    u.setRole(Role.ROLE_USER);
                     return userRepository.save(u);
                 });
 
         Booking b = new Booking();
         b.setId("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        b.setUserId(passenger.getId());
+        b.setPassengerId(passenger.getId());
         b.setPickupAddress(pickupAddress);
         b.setDropoffAddress(dropoffAddress);
-        b.setPickupLat(pickupLat);
-        b.setPickupLon(pickupLon);
-        b.setDropoffLat(dropoffLat);
-        b.setDropoffLon(dropoffLon);
+        b.setPickupLatitude(pickupLat);
+        b.setPickupLongitude(pickupLon);
+        b.setDropoffLatitude(dropoffLat);
+        b.setDropoffLongitude(dropoffLon);
         b.setDistanceKm(distanceKm);
         b.setEstimatedDurationMinutes(durationMins);
         b.setVehicleCategory(category);
@@ -218,7 +226,6 @@ public class DesktopApiController {
         b.setPaymentStatus(Booking.PaymentStatus.PENDING);
         b.setPaymentMethod(Booking.PaymentMethod.CASH);
         b.setOtp(String.format("%04d", SECURE_RANDOM.nextInt(10000)));
-        b.setCreatedAt(Instant.now());
 
         bookingRepository.save(b);
 
@@ -273,11 +280,11 @@ public class DesktopApiController {
 
         if (opt.isPresent()) {
             Driver d = opt.get();
-            d.setIsOnline(isOnline);
+            d.setOnline(isOnline);
             driverRepository.save(d);
             resp.put("status", "SUCCESS");
             resp.put("driverId", d.getId());
-            resp.put("isOnline", d.getIsOnline());
+            resp.put("isOnline", d.isOnline());
             return ResponseEntity.ok(resp);
         }
 
@@ -299,7 +306,7 @@ public class DesktopApiController {
         }
 
         Booking b = optB.get();
-        if (b.getStatus() != Booking.BookingStatus.SEARCHING) {
+        if (b.getStatus() != Booking.BookingStatus.SEARCHING && b.getStatus() != Booking.BookingStatus.REQUESTED) {
             resp.put("status", "ALREADY_ACCEPTED");
             resp.put("message", "Booking status is currently " + b.getStatus());
             return ResponseEntity.ok(resp);
@@ -379,7 +386,7 @@ public class DesktopApiController {
 
         if (b.getDriverId() != null) {
             driverRepository.findById(b.getDriverId()).ifPresent(d -> {
-                d.setTotalTrips((d.getTotalTrips() != null ? d.getTotalTrips() : 0) + 1);
+                d.setTotalTrips(d.getTotalTrips() + 1);
                 driverRepository.save(d);
             });
         }
@@ -402,13 +409,15 @@ public class DesktopApiController {
         }
 
         if (d != null) {
-            long completed = bookingRepository.countByStatus(Booking.BookingStatus.COMPLETED);
-            Double revenue = bookingRepository.sumTotalGrossRevenue();
+            List<Booking> completedList = bookingRepository.findByStatus(Booking.BookingStatus.COMPLETED);
+            double revenue = completedList.stream()
+                    .mapToDouble(b -> b.getFinalFare() != null ? b.getFinalFare() : b.getEstimatedFare())
+                    .sum();
             stats.put("driverId", d.getId());
-            stats.put("totalTrips", d.getTotalTrips() != null ? d.getTotalTrips() : completed);
-            stats.put("totalEarnings", revenue != null ? revenue * 0.85 : 2840.0);
-            stats.put("rating", d.getRating() != null ? d.getRating() : 4.9);
-            stats.put("isOnline", d.getIsOnline() != null ? d.getIsOnline() : true);
+            stats.put("totalTrips", d.getTotalTrips() > 0 ? d.getTotalTrips() : completedList.size());
+            stats.put("totalEarnings", revenue > 0 ? revenue * 0.85 : 2840.0);
+            stats.put("rating", d.getRating());
+            stats.put("isOnline", d.isOnline());
         } else {
             stats.put("totalTrips", 12);
             stats.put("totalEarnings", 2840.0);
