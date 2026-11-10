@@ -535,13 +535,27 @@ Indexes on `drivers(userId)`, `bookings(status)`, and `bookings(passengerId, dri
   - **Trip Operations Ledger**: Searchable, filterable ledger of all system rides with status filtering and override controls.
 
 ### 7.5 JavaFX Desktop Dispatch Console Module
-- **Package**: `com.rideease.javafx` (`RideEaseFXApp.java`, `AdminDashboardController.java`)
+- **Package**: `com.rideease.javafx` (`RideEaseFXApp.java`, `RideEaseFXLauncher.java`, `MainConsoleController.java`, `OsmTileRenderer.java`)
 - **Capabilities**:
-  - Standalone desktop client connecting directly to the backend database.
-  - Built with JavaFX 21, FXML views, and Scene Builder components.
-  - **ActionEvents**: Handles approvals, rejections, and fleet synchronization.
-  - **MouseEvents & SelectionModels**: Clicking driver records loads Cloudinary photo previews directly into desktop image views.
-  - **Asynchronous Workers**: Uses `javafx.concurrent.Task` to run background database operations without freezing the UI.
+  - Multi-portal enterprise desktop client connecting directly to the Spring Boot REST endpoints and WebSocket STOMP broker.
+  - Built with JavaFX 21, FXML views, and responsive SplitPanes/ScrollPanes.
+  - **Movable & Zoomable OpenStreetMap Canvas (`OsmTileRenderer`)**:
+    - High-performance slippy tile engine rendering real OpenStreetMap tiles on JavaFX Canvas.
+    - Full mouse drag-to-pan and mouse wheel scroll-to-zoom capabilities.
+    - True OSRM driving route polyline overlay, Green Pickup pin (**P**), Red Destination pin (**D**), and live moving car marker (**🚕**).
+  - **Online Nominatim City & Address Search**:
+    - Real-time location search resolving text queries (e.g. *SRM AP*, *AIIMS Mangalagiri*, *Hyderabad*, *Vijayawada*, *Delhi*) to accurate geographical coordinates.
+    - Intelligent local Andhra Pradesh landmark dictionary for instant regional routing.
+  - **One-Click Current Location (`🎯 Use Current Location`)**:
+    - Detects host device geolocation via IP/network and automatically sets the pickup spot.
+  - **Rider OTP Visibility & Synchronous Dispatch**:
+    - Generates 4-digit OTP securely and reveals it to the Rider exclusively once a driver accepts (`ACCEPTED`).
+    - Synchronizes in real time with local loopback and 1.5s background watchdogs.
+  - **Driver Destination Arrival & Payment Confirmation**:
+    - In-app `🏁 Complete Ride & Confirm Payment` button that settles the ride to MySQL, updates driver wallet earnings, and triggers native payment confirmation dialogs.
+  - **Multi-Port Health Diagnostics**: 5-second asynchronous ping monitors for Ports 8080, 8081, and 8082 with dynamic status badges.
+  - **Real Database KPI & Chart Integration**: Live PieChart and BarChart directly backed by MySQL fleet telemetry.
+  - **Driver Compliance Dossier**: TableView and Cloudinary photo inspection panel with Approve/Reject actions.
 
 ### 7.6 Fare Calculation Engine
 - **Class**: `FareCalculationService.java`
