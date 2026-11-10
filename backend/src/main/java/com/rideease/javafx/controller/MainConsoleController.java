@@ -23,6 +23,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.util.Duration;
 
 import java.awt.Desktop;
@@ -133,6 +134,16 @@ public class MainConsoleController implements Initializable {
     private int countdownSeconds = 15;
     private final ObservableList<DriverTableItem> masterData = FXCollections.observableArrayList();
 
+    // Dynamic Geocoded Coordinates for Rider Trip
+    private double currentPickupLat = 16.462434;
+    private double currentPickupLon = 80.506379;
+    private double currentDropLat = 16.446245;
+    private double currentDropLon = 80.580132;
+    private double currentTripDistanceKm = 11.9;
+    private int currentTripDurationMins = 14;
+    private String currentActiveOtp = null;
+    private Timeline riderStatusWatchdog = null;
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         initExternalLaunchers();
@@ -219,36 +230,71 @@ public class MainConsoleController implements Initializable {
         calculateTariffFromBackend();
     }
 
-    private void calculateTariffFromBackend() {
-        // Authoritative OSRM coordinates for Vizag demo route
-        double pLat = 17.7126, pLon = 83.3150;
-        double dLat = 17.7818, dLon = 83.3792;
+    private double[] resolveCoordinatesForAddress(String addr, boolean isPickup) {
+        if (addr == null || addr.trim().isEmpty()) {
+            return isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132};
+        }
+        String lower = addr.trim().toLowerCase();
+        if (lower.contains("srm") || lower.contains("university") || lower.contains("amaravati") || lower.contains("neerukonda")) {
+            return new double[]{16.462434, 80.506379};
+        } else if (lower.contains("mangalagiri") || lower.contains("aiims") || lower.contains("hospital")) {
+            return new double[]{16.446245, 80.580132};
+        } else if (lower.contains("beach") || lower.contains("rk beach") || lower.contains("vizag")) {
+            return new double[]{17.7126, 83.3150};
+        } else if (lower.contains("rushikonda") || lower.contains("it park") || lower.contains("gitam")) {
+            return new double[]{17.7818, 83.3792};
+        } else if (lower.contains("vijayawada") || lower.contains("bus station") || lower.contains("pnbs")) {
+            return new double[]{16.5178, 80.6279};
+        } else if (lower.contains("guntur")) {
+            return new double[]{16.3067, 80.4365};
+        }
+        return isPickup ? new double[]{16.462434, 80.506379} : new double[]{16.446245, 80.580132};
+    }
 
-        apiClient.getAsync("/api/geo/route?pLat=" + pLat + "&pLon=" + pLon + "&dLat=" + dLat + "&dLon=" + dLon,
+    private void calculateTariffFromBackend() {
+        String pickupStr = txtRiderPickup != null ? txtRiderPickup.getText() : "";
+        String dropStr = txtRiderDrop != null ? txtRiderDrop.getText() : "";
+
+        double[] pCoords = resolveCoordinatesForAddress(pickupStr, true);
+        double[] dCoords = resolveCoordinatesForAddress(dropStr, false);
+
+        this.currentPickupLat = pCoords[0];
+        this.currentPickupLon = pCoords[1];
+        this.currentDropLat = dCoords[0];
+        this.currentDropLon = dCoords[1];
+
+        apiClient.getAsync("/api/geo/route?pLat=" + currentPickupLat + "&pLon=" + currentPickupLon + "&dLat=" + currentDropLat + "&dLon=" + currentDropLon,
                 new TypeReference<Map<String, Object>>() {})
                 .thenAccept(route -> {
                     Platform.runLater(() -> {
                         Number distNum = (Number) route.get("distanceKm");
                         Number durNum = (Number) route.get("durationMinutes");
-                        double distanceKm = distNum != null ? distNum.doubleValue() : 12.4;
-                        int durationMinutes = durNum != null ? durNum.intValue() : 24;
+                        this.currentTripDistanceKm = distNum != null ? distNum.doubleValue() : 11.9;
+                        this.currentTripDurationMins = durNum != null ? durNum.intValue() : 14;
 
                         double baseRate = 50.0;
                         double perKm = 14.0;
                         if ("MINI".equals(selectedVehicleTier)) { baseRate = 30.0; perKm = 10.0; }
                         else if ("SUV".equals(selectedVehicleTier)) { baseRate = 80.0; perKm = 18.0; }
 
-                        double total = baseRate + (distanceKm * perKm) + (durationMinutes * 2.0);
+                        double total = baseRate + (currentTripDistanceKm * perKm) + (currentTripDurationMins * 2.0);
 
-                        if (lblFareAmount != null) lblFareAmount.setText(String.format("₹ %.2f", total));
-                        if (lblDistance != null) lblDistance.setText(String.format("Distance: %.1f km", distanceKm));
-                        if (lblDuration != null) lblDuration.setText("Est. Time: ~" + durationMinutes + " mins");
+                        if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
+                        if (lblDistance != null) lblDistance.setText(String.format(Locale.US, "Distance: %.1f km", currentTripDistanceKm));
+                        if (lblDuration != null) lblDuration.setText("Est. Time: ~" + currentTripDurationMins + " mins");
                         animatePulse(lblFareAmount);
+                        drawVisualRouteMap(currentTripDistanceKm);
                     });
                 })
                 .exceptionally(ex -> {
                     Platform.runLater(() -> {
-                        if (lblFareAmount != null) lblFareAmount.setText("₹ 245.00");
+                        this.currentTripDistanceKm = 11.9;
+                        this.currentTripDurationMins = 14;
+                        double total = 30.0 + (11.9 * 10.0) + (14 * 2.0);
+                        if (lblFareAmount != null) lblFareAmount.setText(String.format(Locale.US, "₹ %.2f", total));
+                        if (lblDistance != null) lblDistance.setText("Distance: 11.9 km");
+                        if (lblDuration != null) lblDuration.setText("Est. Time: ~14 mins");
+                        drawVisualRouteMap(11.9);
                     });
                     return null;
                 });
@@ -264,21 +310,34 @@ public class MainConsoleController implements Initializable {
             lblAssignedDriver.setText("Broadcasting trip offer via STOMP to all online drivers...");
         }
 
+        String pickup = txtRiderPickup != null && !txtRiderPickup.getText().trim().isEmpty() ? txtRiderPickup.getText().trim() : "SRM UNIVERSITY AP";
+        String drop = txtRiderDrop != null && !txtRiderDrop.getText().trim().isEmpty() ? txtRiderDrop.getText().trim() : "Mangalagiri AIIMS Hospital";
+
+        double[] pCoords = resolveCoordinatesForAddress(pickup, true);
+        double[] dCoords = resolveCoordinatesForAddress(drop, false);
+        this.currentPickupLat = pCoords[0];
+        this.currentPickupLon = pCoords[1];
+        this.currentDropLat = dCoords[0];
+        this.currentDropLon = dCoords[1];
+
         Map<String, String> form = new HashMap<>();
-        form.put("pickupAddress", txtRiderPickup != null ? txtRiderPickup.getText() : "Beach Road");
-        form.put("dropoffAddress", txtRiderDrop != null ? txtRiderDrop.getText() : "IT Park");
-        form.put("pickupLat", "17.7126");
-        form.put("pickupLon", "83.3150");
-        form.put("dropoffLat", "17.7818");
-        form.put("dropoffLon", "83.3792");
+        form.put("pickupAddress", pickup);
+        form.put("dropoffAddress", drop);
+        form.put("pickupLat", String.valueOf(currentPickupLat));
+        form.put("pickupLon", String.valueOf(currentPickupLon));
+        form.put("dropoffLat", String.valueOf(currentDropLat));
+        form.put("dropoffLon", String.valueOf(currentDropLon));
         form.put("category", selectedVehicleTier);
 
         apiClient.postFormAsync("/api/desktop/book", form)
                 .thenAccept(resp -> {
                     Platform.runLater(() -> {
                         this.currentActiveBookingId = (String) resp.get("bookingId");
-                        String otp = (String) resp.get("otp");
-                        if (lblRiderOtp != null) lblRiderOtp.setText(otp != null ? otp : "----");
+                        this.currentActiveOtp = (String) resp.get("otp");
+                        if (lblRiderOtp != null && currentActiveOtp != null) {
+                            lblRiderOtp.setText(currentActiveOtp);
+                        }
+
                         // Strictly hide OTP during searching state! Only show upon driver acceptance.
                         if (boxOtpContainer != null) {
                             boxOtpContainer.setVisible(false);
@@ -290,10 +349,14 @@ public class MainConsoleController implements Initializable {
                             handleBookingStatusTransition(statusPayload);
                         });
 
-                        // Immediately trigger incoming check for driver tab
+                        // Start continuous status watchdog poll every 1.5 seconds until accepted
+                        startRiderStatusWatchdog(currentActiveBookingId);
+
+                        // Immediately trigger incoming dispatch card on driver tab
                         Map<String, Object> instantPayload = new HashMap<>(resp);
-                        instantPayload.put("pickupAddress", txtRiderPickup != null ? txtRiderPickup.getText() : "Pickup Spot");
-                        instantPayload.put("dropoffAddress", txtRiderDrop != null ? txtRiderDrop.getText() : "Dropoff Spot");
+                        instantPayload.put("pickupAddress", pickup);
+                        instantPayload.put("dropoffAddress", drop);
+                        instantPayload.put("distanceKm", currentTripDistanceKm);
                         renderIncomingDispatchCard(instantPayload);
                     });
                 })
@@ -305,17 +368,55 @@ public class MainConsoleController implements Initializable {
                 });
     }
 
+    private void startRiderStatusWatchdog(String bookingId) {
+        if (riderStatusWatchdog != null) {
+            riderStatusWatchdog.stop();
+        }
+        riderStatusWatchdog = new Timeline(new KeyFrame(Duration.millis(1500), ev -> {
+            if (bookingId == null || !bookingId.equals(currentActiveBookingId)) {
+                if (riderStatusWatchdog != null) riderStatusWatchdog.stop();
+                return;
+            }
+            apiClient.getAsync("/api/desktop/booking/status?bookingId=" + bookingId,
+                    new TypeReference<Map<String, Object>>() {})
+                    .thenAccept(res -> {
+                        Platform.runLater(() -> {
+                            String st = (String) res.get("status");
+                            String otp = (String) res.get("otp");
+                            if (otp != null && !otp.isEmpty()) this.currentActiveOtp = otp;
+
+                            if (st != null && !"SEARCHING".equalsIgnoreCase(st) && !"REQUESTED".equalsIgnoreCase(st)) {
+                                if (riderStatusWatchdog != null) riderStatusWatchdog.stop();
+                                Map<String, Object> payload = new HashMap<>(res);
+                                payload.put("driverId", res.get("driverId"));
+                                handleBookingStatusTransition(payload);
+                            }
+                        });
+                    }).exceptionally(ex -> null);
+        }));
+        riderStatusWatchdog.setCycleCount(Timeline.INDEFINITE);
+        riderStatusWatchdog.play();
+    }
+
     private void handleBookingStatusTransition(Map<String, Object> payload) {
         String status = (String) payload.get("status");
         String message = (String) payload.get("message");
         String driverId = (String) payload.get("driverId");
+        String otp = (String) payload.get("otp");
+        if (otp != null && !otp.isEmpty()) this.currentActiveOtp = otp;
 
         if (lblRiderBookingStatus != null) {
             lblRiderBookingStatus.setText(status != null ? status : "ACTIVE");
-            if ("ACCEPTED".equalsIgnoreCase(status)) {
+            if ("ACCEPTED".equalsIgnoreCase(status) || "ARRIVING".equalsIgnoreCase(status)) {
+                lblRiderBookingStatus.setText("CAPTAIN ACCEPTED • EN ROUTE");
                 lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #16a34a; -fx-font-size: 13px;");
-                if (lblAssignedDriver != null) lblAssignedDriver.setText("Assigned Captain: " + (driverId != null ? driverId : "En Route") + " • 3 mins away");
-                // Reveal OTP to Rider upon driver acceptance!
+                if (lblAssignedDriver != null) {
+                    lblAssignedDriver.setText("Assigned Captain: " + (driverId != null ? driverId : "Captain Rajesh") + " (★ 4.9) • 3 mins away");
+                }
+                // Reveal OTP to Rider prominently upon driver acceptance!
+                if (lblRiderOtp != null && currentActiveOtp != null) {
+                    lblRiderOtp.setText(currentActiveOtp);
+                }
                 if (boxOtpContainer != null) {
                     boxOtpContainer.setVisible(true);
                     boxOtpContainer.setManaged(true);
@@ -329,9 +430,11 @@ public class MainConsoleController implements Initializable {
                     boxOtpContainer.setManaged(false);
                 }
             } else if ("IN_PROGRESS".equalsIgnoreCase(status)) {
+                lblRiderBookingStatus.setText("TRIP IN TRANSIT • EN ROUTE TO DROP");
                 lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #0284c7; -fx-font-size: 13px;");
                 if (lblAssignedDriver != null) lblAssignedDriver.setText("Trip in progress towards destination.");
             } else if ("COMPLETED".equalsIgnoreCase(status)) {
+                lblRiderBookingStatus.setText("TRIP COMPLETED • SETTLED");
                 lblRiderBookingStatus.setStyle("-fx-font-weight: bold; -fx-text-fill: #15803d; -fx-font-size: 13px;");
                 if (lblAssignedDriver != null) lblAssignedDriver.setText("Trip completed! Receipt ready.");
             }
@@ -380,7 +483,8 @@ public class MainConsoleController implements Initializable {
             btnAcceptRide.setOnAction(e -> {
                 if (incomingDispatchBookingId == null) return;
                 stopCountdownTimer();
-                Map<String, String> form = Map.of("bookingId", incomingDispatchBookingId, "driverId", "DRV-001");
+                String acceptedBookingId = incomingDispatchBookingId;
+                Map<String, String> form = Map.of("bookingId", acceptedBookingId, "driverId", "DRV-001");
                 apiClient.postFormAsync("/api/desktop/driver/accept", form)
                         .thenAccept(resp -> {
                             Platform.runLater(() -> {
@@ -388,7 +492,21 @@ public class MainConsoleController implements Initializable {
                                 lblCountdownTimer.setStyle("-fx-text-fill: #16a34a; -fx-font-weight: bold; -fx-font-size: 13px;");
                                 btnAcceptRide.setDisable(true);
                                 animatePulse(cardIncomingTrip);
-                                drawDriverRouteMap("PICKUP", 12.4);
+                                drawDriverRouteMap("PICKUP", currentTripDistanceKm);
+
+                                // Instant local notification to Rider tab on the same desktop instance!
+                                if (acceptedBookingId.equals(currentActiveBookingId)) {
+                                    String otpFromResp = (String) resp.get("otp");
+                                    if (otpFromResp != null && !otpFromResp.isEmpty()) {
+                                        this.currentActiveOtp = otpFromResp;
+                                    }
+                                    Map<String, Object> syncPayload = new HashMap<>();
+                                    syncPayload.put("status", "ACCEPTED");
+                                    syncPayload.put("bookingId", acceptedBookingId);
+                                    syncPayload.put("driverId", "DRV-001");
+                                    syncPayload.put("otp", currentActiveOtp);
+                                    handleBookingStatusTransition(syncPayload);
+                                }
                             });
                         });
             });
@@ -764,8 +882,8 @@ public class MainConsoleController implements Initializable {
                 alert.showAndWait();
             });
         }
-        drawVisualRouteMap(12.4);
-        drawDriverRouteMap("PICKUP", 12.4);
+        drawVisualRouteMap(11.9);
+        drawDriverRouteMap("PICKUP", 11.9);
     }
 
     private void drawVisualRouteMap(double distanceKm) {
@@ -776,41 +894,97 @@ public class MainConsoleController implements Initializable {
 
         gc.clearRect(0, 0, w, h);
 
-        // Background terrain / road grid
-        gc.setFill(javafx.scene.paint.Color.web("#e2e8f0"));
-        gc.fillRect(0, 0, w, h);
+        // 1. Sleek Navigation Cartography Base (#0f172a Deep Slate)
+        gc.setFill(Color.web("#0f172a"));
+        gc.fillRoundRect(0, 0, w, h, 12, 12);
 
-        // Draw arterial road grid lines
-        gc.setStroke(javafx.scene.paint.Color.web("#cbd5e1"));
-        gc.setLineWidth(1.5);
-        for (double x = 20; x < w; x += 40) gc.strokeLine(x, 0, x, h);
-        for (double y = 20; y < h; y += 30) gc.strokeLine(0, y, w, y);
-
-        // Draw curved OSRM route track
-        gc.setStroke(javafx.scene.paint.Color.web("#4f46e5"));
-        gc.setLineWidth(5.0);
+        // 2. Waterways & Coastal Features (Krishna River / Bay water body accents)
+        gc.setFill(Color.web("#1e293b"));
         gc.beginPath();
-        gc.moveTo(60, h - 35);
-        gc.bezierCurveTo(160, h - 90, 280, 20, w - 70, 45);
+        gc.moveTo(0, h * 0.15);
+        gc.bezierCurveTo(w * 0.3, h * 0.35, w * 0.6, h * 0.05, w, h * 0.25);
+        gc.lineTo(w, 0);
+        gc.lineTo(0, 0);
+        gc.closePath();
+        gc.fill();
+
+        // 3. Arterial Road Grid & Expressways
+        gc.setStroke(Color.web("#334155"));
+        gc.setLineWidth(1.2);
+        for (double x = 30; x < w; x += 55) gc.strokeLine(x, 0, x, h);
+        for (double y = 25; y < h; y += 40) gc.strokeLine(0, y, w, y);
+
+        // Highway corridors (Amaravati - Mangalagiri Expressway / NH16 bypass)
+        gc.setStroke(Color.web("#475569"));
+        gc.setLineWidth(3.0);
+        gc.strokeLine(0, h * 0.78, w, h * 0.38);
+        gc.strokeLine(w * 0.25, 0, w * 0.72, h);
+
+        // 4. Glow Underlay for Active OSRM Route
+        gc.setStroke(Color.web("#6366f1", 0.45));
+        gc.setLineWidth(10.0);
+        gc.beginPath();
+        gc.moveTo(65, h - 45);
+        gc.bezierCurveTo(w * 0.32, h - 95, w * 0.62, 35, w - 75, 45);
         gc.stroke();
 
-        // Origin Green Pin (P)
-        gc.setFill(javafx.scene.paint.Color.web("#10b981"));
-        gc.fillOval(50, h - 45, 20, 20);
-        gc.setFill(javafx.scene.paint.Color.WHITE);
-        gc.fillText("P", 56, h - 30);
+        // 5. Main OSRM Route Polyline
+        gc.setStroke(Color.web("#818cf8"));
+        gc.setLineWidth(4.5);
+        gc.beginPath();
+        gc.moveTo(65, h - 45);
+        gc.bezierCurveTo(w * 0.32, h - 95, w * 0.62, 35, w - 75, 45);
+        gc.stroke();
 
-        // Destination Red Pin (D)
-        gc.setFill(javafx.scene.paint.Color.web("#ef4444"));
-        gc.fillOval(w - 80, 35, 20, 20);
-        gc.setFill(javafx.scene.paint.Color.WHITE);
-        gc.fillText("D", w - 74, 50);
+        // 6. Route Metadata Overlay Label
+        gc.setFill(Color.web("#ffffff", 0.9));
+        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
+        String routeLabel = String.format(Locale.US, "OSRM DRIVING • %.1f km (14 mins)", distanceKm);
+        gc.fillText(routeLabel, 16, 22);
 
-        // Moving Car Indicator
-        gc.setFill(javafx.scene.paint.Color.web("#059669"));
-        gc.fillOval(w / 2.0 - 12, h / 2.0 - 12, 24, 24);
-        gc.setFill(javafx.scene.paint.Color.WHITE);
-        gc.fillText("🚕", w / 2.0 - 7, h / 2.0 + 4);
+        // 7. Pickup Landmark & Marker (Green 'P')
+        gc.setFill(Color.web("#10b981"));
+        gc.fillOval(52, h - 58, 26, 26);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2.5);
+        gc.strokeOval(52, h - 58, 26, 26);
+        gc.setFill(Color.WHITE);
+        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 12));
+        gc.fillText("P", 61, h - 41);
+
+        gc.setFill(Color.web("#34d399"));
+        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+        String pLabel = txtRiderPickup != null && !txtRiderPickup.getText().trim().isEmpty() ? txtRiderPickup.getText().trim() : "SRM AP";
+        if (pLabel.length() > 22) pLabel = pLabel.substring(0, 20) + "..";
+        gc.fillText(pLabel, 84, h - 42);
+
+        // 8. Destination Landmark & Marker (Red 'D')
+        gc.setFill(Color.web("#ef4444"));
+        gc.fillOval(w - 88, 32, 26, 26);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2.5);
+        gc.strokeOval(w - 88, 32, 26, 26);
+        gc.setFill(Color.WHITE);
+        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 12));
+        gc.fillText("D", w - 79, 49);
+
+        gc.setFill(Color.web("#f87171"));
+        gc.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+        String dLabel = txtRiderDrop != null && !txtRiderDrop.getText().trim().isEmpty() ? txtRiderDrop.getText().trim() : "AIIMS";
+        if (dLabel.length() > 22) dLabel = dLabel.substring(0, 20) + "..";
+        gc.fillText(dLabel, w - 190, 49);
+
+        // 9. Moving Live Vehicle Indicator (Taxi Badge)
+        double carX = w * 0.46;
+        double carY = h * 0.44;
+        gc.setFill(Color.web("#22c55e"));
+        gc.fillOval(carX - 16, carY - 16, 32, 32);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(2.0);
+        gc.strokeOval(carX - 16, carY - 16, 32, 32);
+        gc.setFill(Color.WHITE);
+        gc.setFont(javafx.scene.text.Font.font("System", 16));
+        gc.fillText("🚕", carX - 10, carY + 6);
     }
 
     private void startNearbyScanningTimer() {
